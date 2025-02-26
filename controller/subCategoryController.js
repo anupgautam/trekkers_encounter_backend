@@ -1,17 +1,23 @@
-const client = require('../utils/db'); 
+const mysql = require('../utils/db'); // Assuming this file contains the mysql connection setup
 
 // Posting Sub-Category
 exports.postSubCategory = async (req, res) => {
     try {
         const { category_id, language_id, sub_category_name } = req.body;
-        const query = `
-            INSERT INTO public."Subcategory" (category_id, language_id, sub_category_name)
-            VALUES ($1, $2, $3) RETURNING *`;
+        const query = 'INSERT INTO Subcategory (category_id, language_id, sub_category_name) VALUES (?, ?, ?)';
         const values = [category_id, language_id, sub_category_name];
 
-        const result = await client.query(query, values);
-
-        res.status(201).json({ msg: 'Sub Category Successfully Added.', resp: result.rows[0] });
+        mysql.query(query, values, (error, result) => {
+            if (error) {
+                console.error(error);
+                return res.status(500).json({ msg: 'Server Error.', error });
+            }
+            if (result.affectedRows > 0) {
+                res.status(201).json({ msg: 'Sub Category Successfully Added.', resp: { id: result.insertId, category_id, language_id, sub_category_name } });
+            } else {
+                res.status(500).json({ msg: 'Failed to add Sub-Category.' });
+            }
+        });
     } catch (error) {
         console.error(error);
         res.status(500).json({ msg: 'Server Error.', error });
@@ -21,10 +27,15 @@ exports.postSubCategory = async (req, res) => {
 // Get all Sub-Categories
 exports.getSubCategory = async (req, res) => {
     try {
-        const query = 'SELECT * FROM public."Subcategory"';
-        const results = await client.query(query);
+        const query = 'SELECT * FROM Subcategory';
 
-        res.status(200).json(results.rows);
+        mysql.query(query, (error, results) => {
+            if (error) {
+                console.error(error);
+                return res.status(500).json({ msg: 'Server Error.', error });
+            }
+            res.status(200).json(results);
+        });
     } catch (error) {
         console.error(error);
         res.status(500).json({ msg: 'Server Error.', error });
@@ -34,12 +45,20 @@ exports.getSubCategory = async (req, res) => {
 // Get Sub-Category by ID
 exports.getSubCategoryById = async (req, res) => {
     try {
-        const query = 'SELECT * FROM public."Subcategory" WHERE id = $1';
+        const query = 'SELECT * FROM Subcategory WHERE id = ?';
         const values = [req.params.postId];
 
-        const result = await client.query(query, values);
-
-        res.status(200).json(result.rows[0]);
+        mysql.query(query, values, (error, result) => {
+            if (error) {
+                console.error(error);
+                return res.status(500).json({ msg: 'Server Error.', error });
+            }
+            if (result.length > 0) {
+                res.status(200).json(result[0]);
+            } else {
+                res.status(404).json({ msg: 'Sub-Category not found.' });
+            }
+        });
     } catch (error) {
         console.error(error);
         res.status(500).json({ msg: 'Server Error.', error });
@@ -50,12 +69,16 @@ exports.getSubCategoryById = async (req, res) => {
 exports.getSubCategoryByLanguage = async (req, res) => {
     try {
         const language_id = req.params.language_id;
-        const query = 'SELECT * FROM public."Subcategory" WHERE language_id = $1';
+        const query = 'SELECT * FROM Subcategory WHERE language_id = ?';
         const values = [language_id];
 
-        const results = await client.query(query, values);
-
-        res.status(200).json(results.rows);
+        mysql.query(query, values, (error, results) => {
+            if (error) {
+                console.error(error);
+                return res.status(500).json({ msg: 'Server Error.', error });
+            }
+            res.status(200).json(results);
+        });
     } catch (error) {
         console.error(error);
         res.status(500).json({ msg: 'Server Error.', error });
@@ -66,12 +89,16 @@ exports.getSubCategoryByLanguage = async (req, res) => {
 exports.getSubCategoryByCategory = async (req, res) => {
     try {
         const category_id = req.params.category_id;
-        const query = 'SELECT * FROM public."Subcategory" WHERE category_id = $1';
+        const query = 'SELECT * FROM Subcategory WHERE category_id = ?';
         const values = [category_id];
 
-        const results = await client.query(query, values);
-
-        res.status(200).json(results.rows);
+        mysql.query(query, values, (error, results) => {
+            if (error) {
+                console.error(error);
+                return res.status(500).json({ msg: 'Server Error.', error });
+            }
+            res.status(200).json(results);
+        });
     } catch (error) {
         console.error(error);
         res.status(500).json({ msg: 'Server Error.', error });
@@ -82,16 +109,20 @@ exports.getSubCategoryByCategory = async (req, res) => {
 exports.updateSubCategory = async (req, res) => {
     try {
         const { category_id, language_id, sub_category_name } = req.body;
-        const query = `
-            UPDATE public."Subcategory"
-            SET category_id = $1, language_id = $2, sub_category_name = $3
-            WHERE id = $4
-            RETURNING *`;
+        const query = 'UPDATE Subcategory SET category_id = ?, language_id = ?, sub_category_name = ? WHERE id = ?';
         const values = [category_id, language_id, sub_category_name, req.params.postId];
 
-        const result = await client.query(query, values);
-
-        res.status(200).json(result.rows[0]);
+        mysql.query(query, values, (error, result) => {
+            if (error) {
+                console.error(error);
+                return res.status(500).json({ msg: 'Server Error.', error });
+            }
+            if (result.affectedRows > 0) {
+                res.status(200).json({ msg: 'Sub-Category updated successfully.', category_id, language_id, sub_category_name });
+            } else {
+                res.status(404).json({ msg: 'Sub-Category not found.' });
+            }
+        });
     } catch (error) {
         console.error(error);
         res.status(500).json({ msg: 'Server Error.', error });
@@ -101,16 +132,20 @@ exports.updateSubCategory = async (req, res) => {
 // Delete Sub-Category
 exports.deleteSubCategory = async (req, res) => {
     try {
-        const query = 'DELETE FROM public."Subcategory" WHERE id = $1 RETURNING *';
+        const query = 'DELETE FROM Subcategory WHERE id = ?';
         const values = [req.params.postId];
 
-        const result = await client.query(query, values);
-
-        if (result.rowCount === 0) {
-            res.status(404).json({ msg: "Data does not exist." });
-        } else {
-            res.status(200).json(result.rows[0]);
-        }
+        mysql.query(query, values, (error, result) => {
+            if (error) {
+                console.error(error);
+                return res.status(500).json({ msg: 'Server Error.', error });
+            }
+            if (result.affectedRows > 0) {
+                res.status(200).json({ msg: 'Sub-Category deleted successfully.' });
+            } else {
+                res.status(404).json({ msg: 'Sub-Category not found.' });
+            }
+        });
     } catch (error) {
         console.error(error);
         res.status(500).json({ msg: 'Server Error.', error });

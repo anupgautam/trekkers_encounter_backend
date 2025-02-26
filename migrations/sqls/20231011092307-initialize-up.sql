@@ -1,12 +1,9 @@
-/* Replace with your SQL commands */
-CREATE TABLE public."EssentialInformation" (
-    id SERIAL PRIMARY KEY,
-    package_id INT REFERENCES public."Package" (id),
-    title VARCHAR NOT NULL,
-    description TEXT NOT NULL,
-    created_at TIMESTAMPTZ DEFAULT NOW(),
-    update_at TIMESTAMPTZ DEFAULT NULL
-);
-
-ALTER TABLE public."EssentialInformation"
-    OWNER TO postgres;
+CREATE TABLE `EssentialInformation` (
+    `id` INT AUTO_INCREMENT PRIMARY KEY,
+    `package_id` INT,
+    `title` VARCHAR(255) NOT NULL,
+    `description` TEXT NOT NULL,
+    `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    `updated_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    FOREIGN KEY (`package_id`) REFERENCES `Package` (`id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;

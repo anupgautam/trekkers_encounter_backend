@@ -1,77 +1,106 @@
-const client = require('../utils/db');
+const mysql = require('../utils/db'); // Assuming this file contains the mysql connection setup
 
 // Posting the language
 exports.postLanguage = async (req, res) => {
     try {
         const { language } = req.body;
-        const query = 'INSERT INTO public."Languages" (language) VALUES ($1) RETURNING *';
+        const query = 'INSERT INTO Languages (language) VALUES (?)';
         const values = [language];
-        const result = await client.query(query, values);
-        res.status(201).json(result.rows[0]);
+
+        mysql.query(query, values, (error, result) => {
+            if (error) {
+                console.error(error);
+                return res.status(500).json({ msg: 'Server Error', error });
+            }
+            res.status(201).json({ message: "Language Successfully Added." });
+        });
     } catch (error) {
         console.error(error);
         res.status(500).json({ msg: 'Server Error', error });
     }
 }
 
-//get request for the language
+// Get request for the language
 exports.getLanguage = async (req, res) => {
     try {
-        const query = 'SELECT * FROM public."Languages"';
-        const result = await client.query(query);
-        res.status(200).json(result.rows);
+        const query = 'SELECT * FROM Languages';
+
+        mysql.query(query, (error, results) => {
+            if (error) {
+                console.error(error);
+                return res.status(500).json({ msg: 'Server Error', error });
+            }
+            res.status(200).json(results);
+        });
     } catch (error) {
         console.error(error);
         res.status(500).json({ msg: 'Server Error', error });
     }
 }
 
-//get request for language filtering by id
+// Get request for language filtering by id
 exports.getLanguageById = async (req, res) => {
     try {
-        const query = 'SELECT * FROM public."Languages" WHERE id = $1';
+        const query = 'SELECT * FROM Languages WHERE id = ?';
         const values = [req.params.id];
-        const result = await client.query(query, values);
-        if (result.rows.length === 0) {
-            return res.status(404).json({ msg: 'Language not found' });
-        }
-        res.status(200).json(result.rows[0]);
+
+        mysql.query(query, values, (error, result) => {
+            if (error) {
+                console.error(error);
+                return res.status(500).json({ msg: 'Server Error', error });
+            }
+            if (result.length === 0) {
+                return res.status(404).json({ msg: 'Language not found' });
+            }
+            res.status(200).json(result[0]);
+        });
     } catch (error) {
         console.error(error);
         res.status(500).json({ msg: 'Server Error', error });
     }
 }
 
-//update request for language 
+// Update request for language
 exports.updateLanguage = async (req, res) => {
     try {
         const { language } = req.body;
-        const query = 'UPDATE public."Languages" SET language = $1 WHERE id = $2 RETURNING *';
+        const query = 'UPDATE Languages SET language = ? WHERE id = ?';
         const values = [language, req.params.id];
-        const result = await client.query(query, values);
-        if (result.rows.length === 0) {
-            return res.status(404).json({ msg: 'Language not found' });
-        }
-        res.status(200).json(result.rows[0]);
+
+        mysql.query(query, values, (error, result) => {
+            if (error) {
+                console.error(error);
+                return res.status(500).json({ msg: 'Server Error', error });
+            }
+            if (result.affectedRows === 0) {
+                return res.status(404).json({ msg: 'Language not found' });
+            }
+            res.status(200).json(result);
+        });
     } catch (error) {
         console.error(error);
         res.status(500).json({ msg: 'Server Error', error });
     }
 }
 
-//delete request for language
+// Delete request for language
 exports.deleteLanguage = async (req, res) => {
     try {
-        const query = 'DELETE FROM public."Languages" WHERE id = $1 RETURNING *';
+        const query = 'DELETE FROM Languages WHERE id = ?';
         const values = [req.params.id];
-        const result = await client.query(query, values);
-        if (result.rows.length === 0) {
-            return res.status(404).json({ msg: 'Language not found' });
-        }
-        res.status(200).json(result.rows[0]);
+
+        mysql.query(query, values, (error, result) => {
+            if (error) {
+                console.error(error);
+                return res.status(500).json({ msg: 'Server Error', error });
+            }
+            if (result.affectedRows === 0) {
+                return res.status(404).json({ msg: 'Language not found' });
+            }
+            res.status(200).json({ msg: 'Language deleted successfully' });
+        });
     } catch (error) {
         console.error(error);
         res.status(500).json({ msg: 'Server Error', error });
     }
 }
-

@@ -1,13 +1,19 @@
-const { Client } = require("pg");
+const mysql = require("mysql2");
 
-
-
-const client = new Client({
-    user: 'postgres',
-    host: 'localhost',
-    database: 'himalayantours',
-    password: 'czvxynmch',
-    port: 5432,
+const connection = mysql.createConnection({
+    host: 'localhost',  
+    user: 'root',
+    password: '',
+    database: 'trekker1_encounter',
+    port: 3306
 });
 
-module.exports = client;
+connection.connect((err) => {
+    if (err) {
+        console.error("Error connecting to MySQL:", err);
+        return;
+    }
+    console.log("Connected to MySQL database.");
+});
+
+module.exports = connection;

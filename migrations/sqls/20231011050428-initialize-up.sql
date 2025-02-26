@@ -1,14 +1,8 @@
-/* Replace with your SQL commands */
-
-
-CREATE TABLE public."Categories"
-(
-    id serial PRIMARY KEY,
-    category_name character varying(255) NOT NULL,
-    language_id INT REFERENCES public."Languages"(id), 
-    created_at timestamp DEFAULT CURRENT_TIMESTAMP,
-    updated_at timestamp
-);
-
-ALTER TABLE public."Categories"
-    OWNER to postgres;
+CREATE TABLE `Categories` (
+    `id` INT AUTO_INCREMENT PRIMARY KEY,
+    `category_name` VARCHAR(255) NOT NULL,
+    `language_id` INT,
+    `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    `updated_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    FOREIGN KEY (`language_id`) REFERENCES `Languages`(`id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;

@@ -1,9 +1,10 @@
 {
     "dev": {
-        "driver": "pg",
-        "user": "postgres",
-        "password": "czvxynmch",
+        "driver": "mysql",
+        "user": "root",
+        "password": "",
         "host": "localhost",
-        "database": "trekkers_encounter"
+        "database": "trekker1_encounter",
+        "port": "3306"
     }
 }

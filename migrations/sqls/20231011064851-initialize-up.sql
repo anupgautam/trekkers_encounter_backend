@@ -1,12 +1,9 @@
-/* Replace with your SQL commands */
-CREATE TABLE public."Blog" (
-    id SERIAL PRIMARY KEY,
-    title VARCHAR(255) NOT NULL,
-    short_description TEXT NOT NULL,
-    image VARCHAR(255) NOT NULL,
-    description TEXT NOT NULL,
-    created_at TIMESTAMPTZ DEFAULT NOW(),
-    updated_at TIMESTAMPTZ
-);
-ALTER TABLE public."Blog"
-    OWNER TO postgres;
+CREATE TABLE `Blog` (
+    `id` INT AUTO_INCREMENT PRIMARY KEY,
+    `title` VARCHAR(255) NOT NULL,
+    `short_description` TEXT NOT NULL,
+    `image` VARCHAR(255) NOT NULL,
+    `description` TEXT NOT NULL,
+    `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    `updated_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;

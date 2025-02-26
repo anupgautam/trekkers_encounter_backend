@@ -4,59 +4,60 @@ const crypto = require('crypto');
 const mailService = require('../utils/mailUtils');
 const client = require('../utils/db');
 
+
 exports.SignUp = async (req, res) => {
     bcrypt.hash(req.body.password, 10, async (err, hash) => {
         try {
-            const existingUser = await client.query('SELECT * FROM "Users" WHERE email = $1', [req.body.email]);
+            // Check if email already exists
+            client.execute('SELECT * FROM Users WHERE email = ?', [req.body.email], (err, results) => {
+                if (err) {
+                    return res.status(500).json({ msg: 'Server Error.', err });
+                }
+                if (results.length > 0) {
+                    return res.status(400).json({ msg: 'Email already exists.' });
+                }
 
-            if (existingUser.rowCount > 0) {
-                return res.status(400).json({ msg: 'Email already exists.' });
-            }
+                // Generate verification token
+                const token = crypto.randomBytes(20).toString('hex');
+                const query = `INSERT INTO Users (first_name, last_name, email, address, contact_no, password, verification_token, is_verified, is_admin) 
+                               VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`;
 
-            const token = crypto.randomBytes(20).toString('hex')
-            const query = `INSERT INTO public."Users" (id, first_name, last_name, email, address, contact_no, password, verification_token, is_verified, is_admin)
-                           VALUES (DEFAULT, $1, $2, $3, $4, $5, $6, $7, $8, $9) RETURNING *`;
-            const values = [
-                req.body.first_name,
-                req.body.last_name,
-                req.body.email,
-                req.body.address,
-                req.body.contact_no,
-                hash,
-                token,
-                false,
-                false,
-            ];
+                const values = [
+                    req.body.first_name,
+                    req.body.last_name,
+                    req.body.email,
+                    req.body.address,
+                    req.body.contact_no,
+                    hash,
+                    token,
+                    false,
+                    false,
+                ];
 
-            const user = await client.query(query, values);
+                client.execute(query, values, (err, results) => {
+                    if (err) {
+                        return res.status(500).json({ msg: 'Error creating user.', err });
+                    }
 
-            res.status(201).json({ msg: 'User Successfully Created.', resp: user.rows[0] });
+                    const user = results[0]; // Assuming the result contains the inserted user
 
-            const verificationLink = `http://localhost:8888/user/verify?token=${token}`;
-            const payload = {
-                to: user.rows[0].email,
-                title: 'Welcome to Himalayan Tours and Adventure!',
-                message: `Dear sir/mam,
-                
-            Welcome to Himalayan Tours and Adventure Pvt. Ltd.! We are thrilled to have you join our community of adventure seekers.
-            
-            Here at Himalayan Tours and Adventure, we offer a wide range of exciting trekking and adventure experiences that will take you to the most breathtaking and remote corners of the Himalayas. Our team of experienced guides and support staff are dedicated to ensuring that your journey with us is not only safe but also filled with unforgettable memories.
-            
-            Your registration with us is a significant step toward embarking on incredible journeys, making new friends, and exploring the beauty of the Himalayas. We look forward to having you as part of our adventure family.
-            
-            To get started, please verify your email address by clicking the link below:
-            <a href="${verificationLink}">Verify Your Email</a>
-            
-            Thank you for choosing Himalayan Tours and Adventure for your next adventure! If you have any questions or need assistance, don't hesitate to contact our support team at info@himalayantoursandadventure.com.
-            
-            See you on the trails!
-            
-            Best regards,
-            The Himalayan Tours and Adventure Team`,
-                link: `${verificationLink}`,
-            };
+                    res.status(201).json({ msg: 'User Successfully Created.', resp: user });
 
-            mailService.sendMail(payload);
+                    const verificationLink = `http://localhost:8888/user/verify?token=${token}`;
+                    const payload = {
+                        to: user.email,
+                        title: 'Welcome to Himalayan Tours and Adventure!',
+                        message: `Dear sir/mam,
+                                    Welcome to Himalayan Tours and Adventure Pvt. Ltd.! We are thrilled to have you join our community of adventure seekers.
+                                    
+                                    Please verify your email by clicking the link below:
+                                    <a href="${verificationLink}">Verify Your Email</a>`,
+                        link: `${verificationLink}`,
+                    };
+
+                    mailService.sendMail(payload);
+                });
+            });
         } catch (err) {
             console.log(err);
             res.status(500).json({ msg: 'Server Error.', err });
@@ -71,79 +72,62 @@ exports.getUser = async (req, res) => {
             return res.status(400).json({ msg: 'Invalid is_verified parameter. It must be true or false.' });
         }
 
-        const query = 'SELECT * FROM "Users" WHERE is_verified = $1';
-        const values = [isVerified];
-        const results = await client.query(query, values);
+        client.execute('SELECT * FROM Users WHERE is_verified = ?', [isVerified], (err, results) => {
+            if (err) {
+                console.error(err);
+                return res.status(500).json({ msg: 'Server Error.', err });
+            }
 
-        res.status(200).json(results.rows);
+            res.status(200).json(results);
+        });
     } catch (error) {
         console.error(error);
         res.status(500).json({ msg: 'Server Error.', error });
     }
 };
+
 
 exports.updateUser = async (req, res) => {
     try {
         const postId = req.params.postId;
         const updateFields = {};
 
-        // Check if 'first_name' is provided and not null
-        if (req.body.first_name !== undefined && req.body.first_name !== null) {
-            updateFields.first_name = req.body.first_name;
-        }
+        if (req.body.first_name !== undefined) updateFields.first_name = req.body.first_name;
+        if (req.body.last_name !== undefined) updateFields.last_name = req.body.last_name;
+        if (req.body.address !== undefined) updateFields.address = req.body.address;
+        if (req.body.contact_no !== undefined) updateFields.contact_no = req.body.contact_no;
+        if (req.body.is_verified !== undefined) updateFields.is_verified = req.body.is_verified;
 
-        // Add similar checks for other fields (last_name, address, contact_no, etc.)
-
-        if (req.body.last_name !== undefined && req.body.last_name !== null) {
-            updateFields.last_name = req.body.last_name;
-        }
-        if (req.body.address !== undefined && req.body.address !== null) {
-            updateFields.address = req.body.address;
-        }
-        if (req.body.contact_no !== undefined && req.body.contact_no !== null) {
-            updateFields.contact_no = req.body.contact_no;
-        }
-        if (req.body.is_verified !== undefined) {
-            updateFields.is_verified = req.body.is_verified;
-        }
-
-        // If there are no fields to update, respond with an error
         if (Object.keys(updateFields).length === 0) {
             return res.status(400).json({ msg: 'No fields to update.' });
         }
 
-        // Construct and execute the SQL query
-        const query = `
-            UPDATE public."Users"
-            SET 
-                first_name = COALESCE($1, first_name), 
-                last_name = COALESCE($2, last_name), 
-                address = COALESCE($3, address), 
-                contact_no = COALESCE($4, contact_no), 
-                is_verified = COALESCE($5, is_verified)
-            WHERE id = $6
-            RETURNING *`;
-        const values = [
-            updateFields.first_name,
-            updateFields.last_name,
-            updateFields.address,
-            updateFields.contact_no,
-            updateFields.is_verified,
-            postId,
-        ];
+        const setString = Object.keys(updateFields)
+            .map(key => `${key} = ?`)
+            .join(', ');
 
-        const updatedUser = await client.query(query, values);
+        const values = [...Object.values(updateFields), postId];
 
-        if (updatedUser.rows.length === 0) {
-            return res.status(404).json({ msg: 'User not found.' });
-        }
+        const query = `UPDATE Users SET ${setString} WHERE id = ?`;
 
-        res.status(200).json(updatedUser.rows[0]);
+        client.execute(query, values, (err, results) => {
+            if (err) {
+                console.error(err);
+                return res.status(500).json({ msg: 'Server Error.', err });
+            }
+
+            if (results.affectedRows === 0) {
+                return res.status(404).json({ msg: 'User not found.' });
+            }
+
+            res.status(200).json(results);
+        });
     } catch (error) {
         console.error(error);
         res.status(500).json({ msg: 'Server Error.', error });
     }
 };
+
 
 exports.updateAdmin = async (req, res) => {
     try {
@@ -154,7 +138,7 @@ exports.updateAdmin = async (req, res) => {
             RETURNING *`;
         const values = [req.body.is_admin, req.params.postId];
 
-        const updatedUser = await client.query(query, values);
+        const updatedUser = await client.execute(query, values);
 
         res.status(200).json(updatedUser.rows[0]);
     } catch (error) {
@@ -168,7 +152,7 @@ exports.getUserById = async (req, res) => {
         const query = 'SELECT * FROM "Users" WHERE id = $1';
         const values = [req.params.id];
 
-        const user = await client.query(query, values);
+        const user = await client.execute(query, values);
 
         res.status(200).json(user.rows[0]);
     } catch (error) {
@@ -181,57 +165,60 @@ exports.verify = async (req, res) => {
     try {
         const token = req.query.token;
 
-        const query = `
-            UPDATE public."Users"
-            SET is_verified = true
-            WHERE verification_token = $1
-            RETURNING *`;
-        const values = [token];
+        client.execute('UPDATE Users SET is_verified = true WHERE verification_token = ?', [token], (err, results) => {
+            if (err) {
+                console.error(err);
+                return res.status(500).json({ msg: 'Server Error.', err });
+            }
 
-        const user = await client.query(query, values);
+            if (results.affectedRows === 0) {
+                return res.status(400).json({ msg: 'Invalid or expired token.' });
+            }
 
-        if (user.rowCount === 0) {
-            return res.status(400).json({ msg: 'Invalid or expired token.' });
-        }
-
-        res.status(200).json({ msg: 'Email verified successfully.' });
+            res.status(200).json({ msg: 'Email verified successfully.' });
+        });
     } catch (err) {
         console.error('Error updating Users:', err);
         res.status(500).json({ msg: 'Server Error.', err });
     }
 };
 
+
 exports.login = async (req, res) => {
     try {
-        const query = 'SELECT * FROM "Users" WHERE email = $1';
-        const values = [req.body.email];
-
-        const user = await client.query(query, values);
-
-        if (user.rowCount === 0) {
-            return res.status(400).json({ msg: 'Your email does not exist.' });
-        }
-
-        if (!user.rows[0].is_verified) {
-            return res.status(400).json({ msg: 'User is not verified. Please contact the admin.' });
-        }
-
-        bcrypt.compare(req.body.password, user.rows[0].password, (err, result) => {
-            if (err || !result) {
-                return res.status(400).json({ msg: 'Password does not match' });
+        client.execute('SELECT * FROM Users WHERE email = ?', [req.body.email], (err, results) => {
+            if (err) {
+                console.error(err);
+                return res.status(500).json({ msg: 'Server Error.', error: err });
             }
 
-            const access = jwt.sign(user.rows[0], 'access', { expiresIn: '10m' });
-            const refresh = jwt.sign(user.rows[0], 'refresh', { expiresIn: '12d' });
+            if (results.length === 0) {
+                return res.status(400).json({ msg: 'Your email does not exist.' });
+            }
 
-            res.status(200).json({
-                email: user.rows[0].email,
-                id: user.rows[0].id,
-                is_admin: user.rows[0].is_admin,
-                tokens: {
-                    access,
-                    refresh,
-                },
+            const user = results[0];
+
+            if (!user.is_verified) {
+                return res.status(400).json({ msg: 'User is not verified. Please contact the admin.' });
+            }
+
+            bcrypt.compare(req.body.password, user.password, (err, result) => {
+                if (err || !result) {
+                    return res.status(400).json({ msg: 'Password does not match' });
+                }
+
+                const access = jwt.sign(user, 'access', { expiresIn: '10m' });
+                const refresh = jwt.sign(user, 'refresh', { expiresIn: '12d' });
+
+                res.status(200).json({
+                    email: user.email,
+                    id: user.id,
+                    is_admin: user.is_admin,
+                    tokens: {
+                        access,
+                        refresh,
+                    },
+                });
             });
         });
     } catch (error) {
@@ -240,6 +227,7 @@ exports.login = async (req, res) => {
     }
 };
 
+
 const resetTokens = new Map();
 
 exports.checkEmailExistsAndSendLink = async (req, res) => {
@@ -247,7 +235,7 @@ exports.checkEmailExistsAndSendLink = async (req, res) => {
     try {
         const query = 'SELECT * FROM "Users" WHERE email = $1';
         const values = [email];
-        const user = await client.query(query, values);
+        const user = await client.execute(query, values);
         if (user.rowCount === 0) {
             return res.status(404).json({ msg: 'Email not found.' });
         }
@@ -297,7 +285,7 @@ exports.resetPassword = async (req, res) => {
             RETURNING *`;
 
         const values = [hashedPassword];
-        const updatedUsers = await client.query(query, values);
+        const updatedUsers = await client.execute(query, values);
         if (updatedUsers.rowCount === 0) {
             return res.status(400).json({ msg: 'Password update failed.' });
         }
@@ -309,15 +297,6 @@ exports.resetPassword = async (req, res) => {
     }
 };
 
-async function getUserByIdData(userId) {
-    try {
-        const user = await client.oneOrNone('SELECT * FROM "Users" WHERE id = $1', userId);
-        return user;
-    } catch (error) {
-        console.error('Error fetching user by ID:', error);
-        return null;
-    }
-}
 
 
 //change password api
@@ -325,31 +304,35 @@ exports.changePassword = async (req, res) => {
     const { userId, currentPassword, newPassword } = req.body;
 
     try {
-        // Check the current password by retrieving the user's hashed password from the database
-        const getPasswordQuery = 'SELECT password FROM "Users" WHERE id = $1';
-        const result = await client.query(getPasswordQuery, [userId]);
+        client.execute('SELECT password FROM Users WHERE id = ?', [userId], (err, results) => {
+            if (err) {
+                console.error(err);
+                return res.status(500).json({ message: 'Server Error.', error: err });
+            }
 
-        if (result.rowCount === 1) {
-            const storedHashedPassword = result.rows[0].password;
+            if (results.length === 0) {
+                return res.status(404).json({ message: 'User not found.' });
+            }
 
-            // Compare the provided current password with the stored hashed password
-            const isPasswordValid = await bcrypt.compare(currentPassword, storedHashedPassword);
+            const storedHashedPassword = results[0].password;
 
-            if (isPasswordValid) {
-                // Hash the new password
+            bcrypt.compare(currentPassword, storedHashedPassword, async (err, isPasswordValid) => {
+                if (err || !isPasswordValid) {
+                    return res.status(400).json({ message: 'Current password is incorrect.' });
+                }
+
                 const hashedPassword = await bcrypt.hash(newPassword, 10);
 
-                // Update the user's password in the database
-                const updateQuery = 'UPDATE "Users" SET password = $1 WHERE id = $2';
-                await client.query(updateQuery, [hashedPassword, userId]);
+                client.execute('UPDATE Users SET password = ? WHERE id = ?', [hashedPassword, userId], (err, results) => {
+                    if (err) {
+                        console.error(err);
+                        return res.status(500).json({ message: 'Error updating password.', err });
+                    }
 
-                res.status(200).json({ message: 'Password updated successfully.' });
-            } else {
-                res.status(400).json({ message: 'Current password is incorrect.' });
-            }
-        } else {
-            res.status(404).json({ message: 'User not found.' });
-        }
+                    res.status(200).json({ message: 'Password updated successfully.' });
+                });
+            });
+        });
     } catch (error) {
         console.error(error);
         res.status(500).json({ message: 'Server Error.' });

@@ -1,12 +1,9 @@
-/* Replace with your SQL commands */
-CREATE TABLE public."IncludeExcludePackage"
-(
-    id SERIAL PRIMARY KEY,
-    include_exclude_id INT REFERENCES public."IncludeExclude" (id),
-    package_id INT REFERENCES public."Package" (id),
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    update_at TIMESTAMP
-);
-
-ALTER TABLE public."IncludeExcludePackage"
-    OWNER TO postgres;
+CREATE TABLE `IncludeExcludePackage` (
+    `id` INT AUTO_INCREMENT PRIMARY KEY,
+    `include_exclude_id` INT,
+    `package_id` INT,
+    `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    `updated_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    FOREIGN KEY (`include_exclude_id`) REFERENCES `IncludeExclude` (`id`),
+    FOREIGN KEY (`package_id`) REFERENCES `Package` (`id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;

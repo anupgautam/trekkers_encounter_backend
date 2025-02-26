@@ -1,14 +1,10 @@
-/* Replace with your SQL commands */
-CREATE TABLE public."Itinerary"
-(
-    id SERIAL PRIMARY KEY,
-    package_id INT REFERENCES public."Package" (id),
-    day VARCHAR NOT NULL,
-    title VARCHAR NOT NULL,
-    description TEXT NOT NULL,
-    created_at TIMESTAMPTZ DEFAULT NOW(),
-    update_at TIMESTAMPTZ DEFAULT NULL
-);
-
-ALTER TABLE public."Itinerary"
-    OWNER TO postgres;
+CREATE TABLE `Itinerary` (
+    `id` INT AUTO_INCREMENT PRIMARY KEY,
+    `package_id` INT,
+    `day` VARCHAR(255) NOT NULL,
+    `title` VARCHAR(255) NOT NULL,
+    `description` TEXT NOT NULL,
+    `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    `updated_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    FOREIGN KEY (`package_id`) REFERENCES `Package` (`id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;

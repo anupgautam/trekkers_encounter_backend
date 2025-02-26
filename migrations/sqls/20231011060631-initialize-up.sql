@@ -1,12 +1,7 @@
-/* Replace with your SQL commands */
-CREATE TABLE public."Faq"
-(
-    id SERIAL PRIMARY KEY,
-    faq_question text NOT NULL,
-    faq_answer text NOT NULL,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    update_at TIMESTAMP
-);
-
-ALTER TABLE public."Faq"
-    OWNER TO postgres;
+CREATE TABLE `Faq` (
+    `id` INT AUTO_INCREMENT PRIMARY KEY,
+    `faq_question` TEXT NOT NULL,
+    `faq_answer` TEXT NOT NULL,
+    `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    `updated_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;

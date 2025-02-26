@@ -1,19 +1,19 @@
-/* Replace with your SQL commands */
-CREATE TABLE public."Package" (
-    id serial PRIMARY KEY,
-    category_id INT REFERENCES public."Categories" (id),
-    sub_category_id INT REFERENCES public."Subcategory"(id),
-    language_id INT REFERENCES public."Languages"(id),
-    title character varying NOT NULL,
-    short_description character varying NOT NULL,
-    description character varying NOT NULL,
-    duration character varying NOT NULL,
-    currency character varying NOT NULL,
-    price numeric NOT NULL,
-    package_image character varying NOT NULL,
-    overall_ratings numeric,
-    created_at timestamp DEFAULT current_timestamp,
-    updated_at timestamp
-);
-ALTER TABLE public."Package"
-    OWNER TO postgres;
+CREATE TABLE `Package` (
+    `id` INT AUTO_INCREMENT PRIMARY KEY,
+    `category_id` INT,
+    `sub_category_id` INT,
+    `language_id` INT,
+    `title` VARCHAR(255) NOT NULL,
+    `short_description` VARCHAR(255) NOT NULL,
+    `description` VARCHAR(255) NOT NULL,
+    `duration` VARCHAR(255) NOT NULL,
+    `currency` VARCHAR(255) NOT NULL,
+    `price` DECIMAL(10, 2) NOT NULL,
+    `package_image` VARCHAR(255) NOT NULL,
+    `overall_ratings` DECIMAL(5, 2) DEFAULT NULL,
+    `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    `updated_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    FOREIGN KEY (`category_id`) REFERENCES `Categories` (`id`),
+    FOREIGN KEY (`sub_category_id`) REFERENCES `Subcategory` (`id`),
+    FOREIGN KEY (`language_id`) REFERENCES `Languages` (`id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
