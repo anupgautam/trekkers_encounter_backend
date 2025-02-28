@@ -13,68 +13,92 @@ exports.postHomePageSlider = async (req, res) => {
         }
 
         const query = `
-            INSERT INTO public."HomePageSlider" (title, description, slider_image, language_id)
-            VALUES ($1, $2, $3, $4) 
-            RETURNING *
+            INSERT INTO HomePageSlider (title, description, slider_image, language_id)
+            VALUES (?, ?, ?, ?)
         `;
         const values = [title, description, slider_image, language_id];
 
-        const savedHomePageSlider = await client.query(query, values);
+        client.query(query, values, (error, results) => {
+            if (error) {
+                console.error(error);
+                return res.status(500).json({ msg: 'Server Error.', error: error.message });
+            }
 
-        res.status(201).json({ msg: 'Successfully Added Home page slider.', data: savedHomePageSlider.rows[0] });
+            res.status(201).json({ msg: 'Successfully Added Home page slider.', data: results[0] });
+        });
     } catch (error) {
         console.error(error);
         res.status(500).json({ msg: 'Server Error.', error: error.message });
     }
 };
 
+
 // Get request for the Home page slider
 exports.getHomePageSlider = async (req, res) => {
     try {
-        const query = 'SELECT * FROM public."HomePageSlider"';
-        const result = await client.query(query);
+        const query = 'SELECT * FROM HomePageSlider';
 
-        res.status(200).json(result.rows);
+        client.query(query, (error, results) => {
+            if (error) {
+                console.error(error);
+                return res.status(500).json({ msg: 'Server Error.', error: error.message });
+            }
+
+            res.status(200).json(results);
+        });
     } catch (error) {
         console.error(error);
         res.status(500).json({ msg: 'Server Error.', error: error.message });
     }
-}
+};
+
 
 // Get request for Home page slider filtering by id
 exports.getHomePageSliderById = async (req, res) => {
     try {
-        const query = 'SELECT * FROM public."HomePageSlider" WHERE id = $1';
+        const query = 'SELECT * FROM HomePageSlider WHERE id = ?';
         const values = [req.params.postId];
 
-        const result = await client.query(query, values);
+        client.query(query, values, (error, results) => {
+            if (error) {
+                console.error(error);
+                return res.status(500).json({ msg: 'Server Error.', error: error.message });
+            }
 
-        if (result.rows.length === 0) {
-            return res.status(404).json({ msg: 'Home page slider not found.' });
-        }
+            if (results.length === 0) {
+                return res.status(404).json({ msg: 'Home page slider not found.' });
+            }
 
-        res.status(200).json(result.rows[0]);
+            res.status(200).json(results[0]);
+        });
     } catch (error) {
         console.error(error);
         res.status(500).json({ msg: 'Server Error.', error: error.message });
     }
-}
+};
+
 
 // Get request for Home page slider using language_id
 exports.getHomePageSliderByLanguage = async (req, res) => {
     try {
         const language_id = req.params.language_id;
-        const query = 'SELECT * FROM public."HomePageSlider" WHERE language_id = $1';
+        const query = 'SELECT * FROM HomePageSlider WHERE language_id = ?';
         const values = [language_id];
 
-        const result = await client.query(query, values);
+        client.query(query, values, (error, results) => {
+            if (error) {
+                console.error(error);
+                return res.status(500).json({ msg: 'Server Error.', error: error.message });
+            }
 
-        res.status(200).json(result.rows);
+            res.status(200).json(results);
+        });
     } catch (error) {
         console.error(error);
         res.status(500).json({ msg: 'Server Error.', error: error.message });
     }
-}
+};
+
 
 // Update request for Home page slider
 exports.updateHomePageSlider = async (req, res) => {
@@ -88,41 +112,52 @@ exports.updateHomePageSlider = async (req, res) => {
         }
 
         const query = `
-            UPDATE public."HomePageSlider" 
-            SET title = $1, description = $2, slider_image = $3, language_id = $4
-            WHERE id = $5
-            RETURNING *
+            UPDATE HomePageSlider
+            SET title = ?, description = ?, slider_image = ?, language_id = ?
+            WHERE id = ?
         `;
         const values = [title, description, slider_image, language_id, req.params.postId];
 
-        const result = await client.query(query, values);
+        client.query(query, values, (error, results) => {
+            if (error) {
+                console.error(error);
+                return res.status(500).json({ msg: 'Server Error.', error: error.message });
+            }
 
-        if (result.rows.length === 0) {
-            return res.status(404).json({ msg: 'Home page slider not found.' });
-        }
+            if (results.affectedRows === 0) {
+                return res.status(404).json({ msg: 'Home page slider not found.' });
+            }
 
-        res.status(200).json({ msg: 'Home page slider updated successfully.', data: result.rows[0] });
+            res.status(200).json({ msg: 'Home page slider updated successfully.', data: results });
+        });
     } catch (error) {
         console.error(error);
         res.status(500).json({ msg: 'Server Error.', error: error.message });
     }
-}
+};
+
 
 // Delete request for Home page slider
 exports.deleteHomePageSlider = async (req, res) => {
     try {
-        const query = 'DELETE FROM public."HomePageSlider" WHERE id = $1 RETURNING *';
+        const query = 'DELETE FROM HomePageSlider WHERE id = ?';
         const values = [req.params.postId];
 
-        const result = await client.query(query, values);
+        client.query(query, values, (error, results) => {
+            if (error) {
+                console.error(error);
+                return res.status(500).json({ msg: 'Server Error.', error: error.message });
+            }
 
-        if (result.rows.length === 0) {
-            return res.status(404).json({ msg: 'Home page slider not found.' });
-        }
+            if (results.affectedRows === 0) {
+                return res.status(404).json({ msg: 'Home page slider not found.' });
+            }
 
-        res.status(200).json({ msg: 'Home page slider deleted successfully.', data: result.rows[0] });
+            res.status(200).json({ msg: 'Home page slider deleted successfully.' });
+        });
     } catch (error) {
         console.error(error);
         res.status(500).json({ msg: 'Server Error.', error: error.message });
     }
-}
+};
+

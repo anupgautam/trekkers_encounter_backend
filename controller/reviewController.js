@@ -1,31 +1,28 @@
-const client = require('../utils/db');
+const client = require('../utils/db'); // Assuming you already have MySQL client set up.
 
 async function updatePackageAverageReview(packageId) {
     try {
         const query = `
             SELECT AVG(review_star) AS average_rating
-            FROM public."ReviewTable"
-            WHERE package_id = $1
+            FROM ReviewTable
+            WHERE package_id = ?
         `;
-        const values = [packageId];
-
-        const result = await client.query(query, values);
-        const averageRating = parseFloat(result.rows[0].average_rating) || 0;
+        const [rows] = await client.execute(query, [packageId]);
+        const averageRating = parseFloat(rows[0].average_rating) || 0;
 
         const updateQuery = `
-            UPDATE public."Package"
-            SET overall_ratings = $1
-            WHERE id = $2
+            UPDATE Package
+            SET overall_ratings = ?
+            WHERE id = ?
         `;
-        const updateValues = [averageRating, packageId];
-
-        await client.query(updateQuery, updateValues);
+        await client.execute(updateQuery, [averageRating, packageId]);
     } catch (error) {
         console.error(error);
     }
 }
 
-// Posting a review
+
+// Posting a review// Posting a review
 exports.postReview = async (req, res) => {
     try {
         const { package_id, user_id, review_star, review_title, review_description } = req.body;
@@ -33,44 +30,39 @@ exports.postReview = async (req, res) => {
         // Check if the user has already reviewed this package
         const existingReviewQuery = `
             SELECT id
-            FROM public."ReviewTable"
-            WHERE package_id = $1 AND user_id = $2
+            FROM ReviewTable
+            WHERE package_id = ? AND user_id = ?
         `;
-        const existingReviewValues = [package_id, user_id];
+        const [existingReviewResult] = await client.execute(existingReviewQuery, [package_id, user_id]);
 
-        const existingReviewResult = await client.query(existingReviewQuery, existingReviewValues);
-
-        if (existingReviewResult.rows.length > 0) {
+        if (existingReviewResult.length > 0) {
             return res.status(400).json({ msg: 'You have already reviewed this package.' });
         }
 
         const insertReviewQuery = `
-            INSERT INTO public."ReviewTable" (package_id, user_id, review_star, review_title, review_description)
-            VALUES ($1, $2, $3, $4, $5)
-            RETURNING *
+            INSERT INTO ReviewTable (package_id, user_id, review_star, review_title, review_description)
+            VALUES (?, ?, ?, ?, ?)
         `;
-        const insertReviewValues = [package_id, user_id, review_star, review_title, review_description];
-
-        const savedReviewResult = await client.query(insertReviewQuery, insertReviewValues);
-        const savedReview = savedReviewResult.rows[0];
+        const [savedReviewResult] = await client.execute(insertReviewQuery, [package_id, user_id, review_star, review_title, review_description]);
 
         // Update the package's average rating based on the new review
         await updatePackageAverageReview(package_id);
 
-        res.status(201).json({ msg: 'Review Successfully Added.', resp: savedReview });
+        res.status(201).json({ msg: 'Review Successfully Added.', resp: savedReviewResult });
     } catch (error) {
         console.error(error);
         res.status(500).json({ msg: 'Server Error.', error });
     }
 };
 
+
+// Get all reviews
 // Get all reviews
 exports.getReview = async (req, res) => {
     try {
-        const query = 'SELECT * FROM public."ReviewTable"';
-        const result = await client.query(query);
-
-        res.status(200).json(result.rows);
+        const query = 'SELECT * FROM ReviewTable';
+        const [result] = await client.execute(query);
+        res.status(200).json(result);
     } catch (error) {
         console.error(error);
         res.status(500).json({ msg: 'Server Error.', error });
@@ -81,15 +73,14 @@ exports.getReview = async (req, res) => {
 exports.getReviewById = async (req, res) => {
     try {
         const reviewId = req.params.postId;
-        const query = 'SELECT * FROM public."ReviewTable" WHERE id = $1';
-        const values = [reviewId];
-        const result = await client.query(query, values);
+        const query = 'SELECT * FROM ReviewTable WHERE id = ?';
+        const [result] = await client.execute(query, [reviewId]);
 
-        if (result.rows.length === 0) {
+        if (result.length === 0) {
             return res.status(404).json({ msg: 'Review not found.' });
         }
 
-        res.status(200).json(result.rows[0]);
+        res.status(200).json(result[0]);
     } catch (error) {
         console.error(error);
         res.status(500).json({ msg: 'Server Error.', error });
@@ -100,42 +91,39 @@ exports.getReviewById = async (req, res) => {
 exports.getReviewByPackage = async (req, res) => {
     try {
         const packageId = req.params.package_id;
-        const query = 'SELECT * FROM public."ReviewTable" WHERE package_id = $1';
-        const values = [packageId];
-        const result = await client.query(query, values);
-
-        res.status(200).json(result.rows);
+        const query = 'SELECT * FROM ReviewTable WHERE package_id = ?';
+        const [result] = await client.execute(query, [packageId]);
+        res.status(200).json(result);
     } catch (error) {
         console.error(error);
         res.status(500).json({ msg: 'Server Error.', error });
     }
 };
 
+
 // Get most reviewed packages and their reviews
 exports.getMostReviewedPackages = async (req, res) => {
     try {
         const query = `
             SELECT r.package_id, COUNT(r.id) AS total_reviews
-            FROM public."ReviewTable" r
+            FROM ReviewTable r
             GROUP BY r.package_id
             ORDER BY total_reviews DESC
             LIMIT 5
         `;
 
-        const result = await client.query(query);
-        const packages = result.rows;
+        const [result] = await client.execute(query);
+        const packages = result;
 
         const packageIds = packages.map((pkg) => pkg.package_id);
 
         const reviewQuery = `
             SELECT *
-            FROM public."ReviewTable" r
-            WHERE r.package_id = ANY($1)
+            FROM ReviewTable r
+            WHERE r.package_id IN (?)
         `;
-
-        const reviewValues = [packageIds];
-        const reviewsResult = await client.query(reviewQuery, reviewValues);
-        const reviews = reviewsResult.rows;
+        const [reviewsResult] = await client.execute(reviewQuery, [packageIds.join(',')]);
+        const reviews = reviewsResult;
 
         res.status(200).json({ packages, reviews });
     } catch (error) {
@@ -144,6 +132,7 @@ exports.getMostReviewedPackages = async (req, res) => {
     }
 };
 
+
 // Update a review by ID
 exports.updateReview = async (req, res) => {
     try {
@@ -151,24 +140,20 @@ exports.updateReview = async (req, res) => {
         const { package_id, user_id, review_star, review_title, review_description } = req.body;
 
         const query = `
-            UPDATE public."ReviewTable"
-            SET package_id = $1, user_id = $2, review_star = $3, review_title = $4, review_description = $5
-            WHERE id = $6
-            RETURNING *
+            UPDATE ReviewTable
+            SET package_id = ?, user_id = ?, review_star = ?, review_title = ?, review_description = ?
+            WHERE id = ?
         `;
+        const [result] = await client.execute(query, [package_id, user_id, review_star, review_title, review_description, reviewId]);
 
-        const values = [package_id, user_id, review_star, review_title, review_description, reviewId];
-
-        const result = await client.query(query, values);
-
-        if (result.rows.length === 0) {
+        if (result.affectedRows === 0) {
             return res.status(404).json({ msg: 'Review not found or not modified.' });
         }
 
         // Update the package's average rating based on the updated review
         await updatePackageAverageReview(package_id);
 
-        res.status(201).json(result.rows[0]);
+        res.status(201).json({ msg: 'Review Updated Successfully.' });
     } catch (error) {
         console.error(error);
         res.status(500).json({ msg: 'Server Error.', error });
@@ -179,23 +164,20 @@ exports.updateReview = async (req, res) => {
 exports.deleteReview = async (req, res) => {
     try {
         const reviewId = req.params.postId;
-        const query = 'DELETE FROM public."ReviewTable" WHERE id = $1';
-        const values = [reviewId];
+        const query = 'DELETE FROM ReviewTable WHERE id = ?';
+        const [result] = await client.execute(query, [reviewId]);
 
-        const result = await client.query(query, values);
-
-        if (result.rowCount === 0) {
+        if (result.affectedRows === 0) {
             return res.status(404).json({ msg: 'Review not found.' });
         }
 
         // Get the associated package_id before deleting
-        const getPackageIdQuery = 'SELECT package_id FROM public."ReviewTable" WHERE id = $1';
-        const getPackageIdValues = [reviewId];
-        const packageIdResult = await client.query(getPackageIdQuery, getPackageIdValues);
+        const getPackageIdQuery = 'SELECT package_id FROM ReviewTable WHERE id = ?';
+        const [packageIdResult] = await client.execute(getPackageIdQuery, [reviewId]);
 
         // Update the package's average rating after the review is deleted
-        if (packageIdResult.rows.length > 0) {
-            const package_id = packageIdResult.rows[0].package_id;
+        if (packageIdResult.length > 0) {
+            const package_id = packageIdResult[0].package_id;
             await updatePackageAverageReview(package_id);
         }
 
@@ -205,3 +187,5 @@ exports.deleteReview = async (req, res) => {
         res.status(500).json({ msg: 'Server Error.', error });
     }
 };
+
+

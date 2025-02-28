@@ -1,4 +1,4 @@
-const client = require('../utils/db'); // Import your PostgreSQL client
+const mysql = require('../utils/db'); // Assuming this file contains the MySQL connection setup
 
 // Posting a single itinerary
 exports.postItinerary = async (req, res) => {
@@ -6,20 +6,24 @@ exports.postItinerary = async (req, res) => {
         const { package_id, day, title, description } = req.body;
 
         const query = `
-            INSERT INTO public."Itinerary" (package_id, day, title, description)
-            VALUES ($1, $2, $3, $4)
-            RETURNING *`;
+            INSERT INTO Itinerary (package_id, day, title, description)
+            VALUES (?, ?, ?, ?)`;
 
         const values = [package_id, day, title, description];
 
-        const result = await client.query(query, values);
-
-        res.status(201).json({ msg: 'Package Itinerary Successfully Added.', resp: result.rows[0] });
+        mysql.query(query, values, (error, result) => {
+            if (error) {
+                console.error(error);
+                return res.status(500).json({ msg: 'Server Error.', error: error.message });
+            }
+            const newItinerary = { id: result.insertId, ...req.body };
+            res.status(201).json({ msg: 'Package Itinerary Successfully Added.', resp: newItinerary });
+        });
     } catch (error) {
         console.error(error);
         res.status(500).json({ msg: 'Server Error.', error: error.message });
     }
-}
+};
 
 // Posting multiple itineraries in bulk
 exports.postBulkItinerary = async (req, res) => {
@@ -36,15 +40,18 @@ exports.postBulkItinerary = async (req, res) => {
             const { day, title, description } = item;
 
             const query = `
-                INSERT INTO public."Itinerary" (package_id, day, title, description)
-                VALUES ($1, $2, $3, $4)
-                RETURNING *`;
+                INSERT INTO Itinerary (package_id, day, title, description)
+                VALUES (?, ?, ?, ?)`;
 
             const values = [package_id, day, title, description];
 
-            const result = await client.query(query, values);
-
-            savedItineraryItems.push(result.rows[0]);
+            mysql.query(query, values, (error, result) => {
+                if (error) {
+                    console.error(error);
+                    return res.status(500).json({ msg: 'Server Error.', error: error.message });
+                }
+                savedItineraryItems.push({ id: result.insertId, ...item });
+            });
         }
 
         res.status(201).json({ msg: 'Bulk Itinerary Items Successfully Added.', resp: savedItineraryItems });
@@ -52,47 +59,68 @@ exports.postBulkItinerary = async (req, res) => {
         console.error(error);
         res.status(500).json({ msg: 'Server Error.', error: error.message });
     }
-}
+};
 
 // Fetch all itineraries
 exports.getItinerary = async (req, res) => {
     try {
-        const query = 'SELECT * FROM public."Itinerary"';
-        const result = await client.query(query);
-        res.status(200).json(result.rows);
+        const query = 'SELECT * FROM Itinerary';
+
+        mysql.query(query, (error, results) => {
+            if (error) {
+                console.error(error);
+                return res.status(500).json({ msg: 'Server Error.', error: error.message });
+            }
+            res.status(200).json(results);
+        });
     } catch (error) {
         console.error(error);
         res.status(500).json({ msg: 'Server Error.', error: error.message });
     }
-}
+};
 
 // Fetch a single itinerary by ID
 exports.getItineraryById = async (req, res) => {
     try {
         const itineraryId = req.params.postId;
-        const query = 'SELECT * FROM public."Itinerary" WHERE _id = $1';
+        const query = 'SELECT * FROM Itinerary WHERE id = ?';
         const values = [itineraryId];
-        const result = await client.query(query, values);
-        res.status(200).json(result.rows[0]);
+
+        mysql.query(query, values, (error, result) => {
+            if (error) {
+                console.error(error);
+                return res.status(500).json({ msg: 'Server Error.', error: error.message });
+            }
+            if (result.length === 0) {
+                return res.status(404).json({ msg: 'Itinerary not found.' });
+            }
+            res.status(200).json(result[0]);
+        });
     } catch (error) {
         console.error(error);
         res.status(500).json({ msg: 'Server Error.', error: error.message });
     }
-}
+};
 
 // Fetch itineraries by package ID
 exports.getItineraryByPackage = async (req, res) => {
     try {
         const package_id = req.params.package_id;
-        const query = 'SELECT * FROM public."Itinerary" WHERE package_id = $1';
+        const query = 'SELECT * FROM Itinerary WHERE package_id = ?';
         const values = [package_id];
-        const result = await client.query(query, values);
-        res.status(200).json(result.rows);
+
+        mysql.query(query, values, (error, result) => {
+            if (error) {
+                console.error(error);
+                return res.status(500).json({ msg: 'Server Error.', error: error.message });
+            }
+            res.status(200).json(result);
+        });
     } catch (error) {
         console.error(error);
         res.status(500).json({ msg: 'Server Error.', error: error.message });
     }
-}
+};
 
 // Update an itinerary by ID
 exports.updateItinerary = async (req, res) => {
@@ -101,41 +129,48 @@ exports.updateItinerary = async (req, res) => {
         const { package_id, day, title, description } = req.body;
 
         const query = `
-            UPDATE public."Itinerary"
-            SET package_id = $1, day = $2, title = $3, description = $4
-            WHERE _id = $5
-            RETURNING *`;
+            UPDATE Itinerary
+            SET package_id = ?, day = ?, title = ?, description = ?
+            WHERE id = ?
+            LIMIT 1`;
 
         const values = [package_id, day, title, description, itineraryId];
 
-        const result = await client.query(query, values);
-
-        if (result.rowCount === 0) {
-            return res.status(404).json({ msg: 'Package not found.' });
-        }
-
-        res.status(200).json({ msg: 'Package updated successfully.', resp: result.rows[0] });
+        mysql.query(query, values, (error, result) => {
+            if (error) {
+                console.error(error);
+                return res.status(500).json({ msg: 'Server Error.', error: error.message });
+            }
+            if (result.affectedRows === 0) {
+                return res.status(404).json({ msg: 'Itinerary not found.' });
+            }
+            res.status(200).json({ msg: 'Itinerary updated successfully.', resp: req.body });
+        });
     } catch (error) {
         console.error(error);
         res.status(500).json({ msg: 'Server Error.', error: error.message });
     }
-}
+};
 
 // Delete an itinerary by ID
 exports.deleteItinerary = async (req, res) => {
     try {
         const itineraryId = req.params.postId;
-        const query = 'DELETE FROM public."Itinerary" WHERE _id = $1';
+        const query = 'DELETE FROM Itinerary WHERE id = ?';
         const values = [itineraryId];
-        const result = await client.query(query, values);
 
-        if (result.rowCount === 0) {
-            return res.status(404).json({ msg: 'Itinerary not found.' });
-        }
-
-        res.status(200).json({ msg: 'Itinerary deleted successfully.' });
+        mysql.query(query, values, (error, result) => {
+            if (error) {
+                console.error(error);
+                return res.status(500).json({ msg: 'Server Error.', error: error.message });
+            }
+            if (result.affectedRows === 0) {
+                return res.status(404).json({ msg: 'Itinerary not found.' });
+            }
+            res.status(200).json({ msg: 'Itinerary deleted successfully.' });
+        });
     } catch (error) {
         console.error(error);
         res.status(500).json({ msg: 'Server Error.', error: error.message });
     }
-}
+};

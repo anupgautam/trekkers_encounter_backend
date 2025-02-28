@@ -193,7 +193,7 @@ basic.get('/package_gallery/', gallery.getPackageGallery);
 basic.get('/package_gallery/:postId', gallery.getPackageGalleryById);
 basic.get('/package_gallery_package/:package_id', gallery.getPackageGalleryByPackage);
 basic.patch('/package_gallery/:postId', upload3.single('image'), gallery.updatePackageGallery);
-basic.delete('/package_gallery/:postId', gallery.deletePackagegallery);
+basic.delete('/package_gallery/:postId', gallery.deletePackageGallery);
 
 var storage4 = multer.diskStorage({
     destination: (req, file, cb) => {

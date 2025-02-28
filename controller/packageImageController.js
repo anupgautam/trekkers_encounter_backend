@@ -1,30 +1,32 @@
-const client = require('../utils/db');
+const mysql = require('../utils/db'); // Assuming mysql2 or mysql is used for MySQL connection
 
 const baseUrl = 'http://localhost:8888';
 
-
-
-//posting the package image
+// Posting the package image
 exports.postPackageImage = async (req, res) => {
     try {
         const { package_id, update_at } = req.body;
         const image = `${baseUrl}/${req.file.path}`;
 
         const query = `
-            INSERT INTO public."PackageImage" (package_id, image, update_at)
-            VALUES ($1, $2, $3)
-            RETURNING *`;
+            INSERT INTO PackageImage (package_id, image, update_at)
+            VALUES (?, ?, ?)`;
 
         const values = [package_id, image, update_at];
 
-        const result = await client.query(query, values);
-
-        res.status(201).json({ msg: 'Package Image Successfully Added.', resp: result.rows[0] });
+        mysql.query(query, values, (error, result) => {
+            if (error) {
+                console.error(error);
+                return res.status(500).json({ msg: 'Server Error.', error: error.message });
+            }
+            const newImage = { id: result.insertId, ...req.body, image };
+            res.status(201).json({ msg: 'Package Image Successfully Added.', resp: newImage });
+        });
     } catch (error) {
         console.error(error);
         res.status(500).json({ msg: 'Server Error.', error: error.message });
     }
-}
+};
 
 // Posting multiple package images (bulk upload)
 exports.postBulkPackageImages = async (req, res) => {
@@ -40,14 +42,18 @@ exports.postBulkPackageImages = async (req, res) => {
             const image = `${baseUrl}/${file.path}`;
 
             const query = `
-                INSERT INTO public."PackageImage" (package_id, image)
-                VALUES ($1, $2)
-                RETURNING *`;
+                INSERT INTO PackageImage (package_id, image)
+                VALUES (?, ?)`;
 
             const values = [package_id, image];
 
-            const result = await client.query(query, values);
-            savedImages.push(result.rows[0]);
+            mysql.query(query, values, (error, result) => {
+                if (error) {
+                    console.error(error);
+                    return res.status(500).json({ msg: 'Server Error.', error: error.message });
+                }
+                savedImages.push({ id: result.insertId, package_id, image });
+            });
         }
 
         res.status(201).json({ msg: 'Bulk Package Images Successfully Added.', resp: savedImages });
@@ -55,58 +61,70 @@ exports.postBulkPackageImages = async (req, res) => {
         console.error(error);
         res.status(500).json({ msg: 'Server Error.', error: error.message });
     }
-}
+};
 
-
-//get request for package image
+// Get request for package image
 exports.getPackageImage = async (req, res) => {
     try {
-        const query = 'SELECT * FROM public."PackageImage"';
-        const result = await client.query(query);
+        const query = 'SELECT * FROM PackageImage';
 
-        res.status(200).json(result.rows);
+        mysql.query(query, (error, results) => {
+            if (error) {
+                console.error(error);
+                return res.status(500).json({ msg: 'Server Error.', error: error.message });
+            }
+            res.status(200).json(results);
+        });
     } catch (error) {
         console.error(error);
         res.status(500).json({ msg: 'Server Error.', error: error.message });
     }
-}
+};
 
-//get request for package image filtering by id
+// Get request for package image by ID
 exports.getPackageImageById = async (req, res) => {
     try {
         const imageId = req.params.postId;
-        const query = 'SELECT * FROM public."PackageImage" WHERE id = $1';
+        const query = 'SELECT * FROM PackageImage WHERE id = ?';
         const values = [imageId];
-        const result = await client.query(query, values);
 
-        if (result.rows.length === 0) {
-            return res.status(404).json({ msg: 'Package Image not found.' });
-        }
-
-        res.status(200).json(result.rows[0]);
+        mysql.query(query, values, (error, result) => {
+            if (error) {
+                console.error(error);
+                return res.status(500).json({ msg: 'Server Error.', error: error.message });
+            }
+            if (result.length === 0) {
+                return res.status(404).json({ msg: 'Package Image not found.' });
+            }
+            res.status(200).json(result[0]);
+        });
     } catch (error) {
         console.error(error);
         res.status(500).json({ msg: 'Server Error.', error: error.message });
     }
-}
+};
 
-//get request for package image by package id
+// Get request for package image by package ID
 exports.getPackageImageByPackageId = async (req, res) => {
     try {
         const packageId = req.params.package_id;
-        const query = 'SELECT * FROM public."PackageImage" WHERE package_id = $1';
+        const query = 'SELECT * FROM PackageImage WHERE package_id = ?';
         const values = [packageId];
-        const result = await client.query(query, values);
 
-        res.status(200).json(result.rows);
+        mysql.query(query, values, (error, result) => {
+            if (error) {
+                console.error(error);
+                return res.status(500).json({ msg: 'Server Error.', error: error.message });
+            }
+            res.status(200).json(result);
+        });
     } catch (error) {
         console.error(error);
         res.status(500).json({ msg: 'Server Error.', error: error.message });
     }
-}
+};
 
-
-//updating the package image using id
+// Updating the package image using ID
 exports.updatePackageImage = async (req, res) => {
     try {
         const imageId = req.params.postId;
@@ -119,42 +137,48 @@ exports.updatePackageImage = async (req, res) => {
         const image = `${baseUrl}/${req.file.path}`;
 
         const query = `
-            UPDATE public."PackageImage"
-            SET package_id = $1, image = $2, update_at = $3
-            WHERE id = $4
-            RETURNING *`;
+            UPDATE PackageImage
+            SET package_id = ?, image = ?, update_at = ?
+            WHERE id = ?
+            LIMIT 1`;
 
         const values = [package_id, image, update_at, imageId];
 
-        const result = await client.query(query, values);
-
-        if (result.rows.length === 0) {
-            return res.status(404).json({ msg: 'Package Image not found.' });
-        }
-
-        res.status(201).json(result.rows[0]);
+        mysql.query(query, values, (error, result) => {
+            if (error) {
+                console.error(error);
+                return res.status(500).json({ msg: 'Server Error.', error: error.message });
+            }
+            if (result.affectedRows === 0) {
+                return res.status(404).json({ msg: 'Package Image not found.' });
+            }
+            res.status(200).json({ msg: 'Package Image updated successfully.', resp: { id: imageId, package_id, image, update_at } });
+        });
     } catch (error) {
         console.error(error);
         res.status(500).json({ msg: 'Server Error.', error: error.message });
     }
-}
+};
 
-//delete request for category
+// Delete request for package image
 exports.deletePackageImage = async (req, res) => {
     try {
         const imageId = req.params.postId;
-        const query = 'DELETE FROM public."PackageImage" WHERE id = $1';
+        const query = 'DELETE FROM PackageImage WHERE id = ?';
         const values = [imageId];
 
-        const result = await client.query(query, values);
-
-        if (result.rowCount === 0) {
-            return res.status(404).json({ msg: 'Package Image not found.' });
-        }
-
-        res.status(200).json({ msg: 'Package Image deleted successfully.' });
+        mysql.query(query, values, (error, result) => {
+            if (error) {
+                console.error(error);
+                return res.status(500).json({ msg: 'Server Error.', error: error.message });
+            }
+            if (result.affectedRows === 0) {
+                return res.status(404).json({ msg: 'Package Image not found.' });
+            }
+            res.status(200).json({ msg: 'Package Image deleted successfully.' });
+        });
     } catch (error) {
         console.error(error);
         res.status(500).json({ msg: 'Server Error.', error: error.message });
     }
-}
+};

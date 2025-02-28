@@ -8,45 +8,64 @@ exports.postBlog = async (req, res) => {
     try {
         const { title, short_description, description } = req.body;
         const image = `${baseUrl}/${req.file.path}`;
+
         const query = `
-            INSERT INTO public."Blog" (title, short_description, image, description)
-            VALUES ($1, $2, $3, $4) RETURNING *`;
+            INSERT INTO Blog (title, short_description, image, description)
+            VALUES (?, ?, ?, ?)`;
         const values = [title, short_description, image, description];
 
-        const result = await client.query(query, values);
+        client.query(query, values, (error, results) => {
+            if (error) {
+                console.error(error);
+                return res.status(500).json({ msg: 'Server Error.', error: error.message });
+            }
 
-        res.status(201).json({ msg: 'Successfully Added Blog.', data: result.rows[0] });
+            res.status(201).json({ msg: 'Successfully Added Blog.', data: results.insertId });
+        });
     } catch (error) {
         console.error(error);
         res.status(500).json({ msg: 'Server Error.', error: error.message });
     }
 };
 
-//get request for the blog
+// Get request for the blog
 exports.getBlog = async (req, res) => {
     try {
-        const query = 'SELECT * FROM public."Blog"';
-        const result = await client.query(query);
+        const query = 'SELECT * FROM Blog';
 
-        res.status(200).json(result.rows);
+        client.query(query, (error, results) => {
+            if (error) {
+                console.error(error);
+                return res.status(500).json({ msg: 'Server Error.', error: error.message });
+            }
+
+            res.status(200).json(results);
+        });
     } catch (error) {
         console.error(error);
         res.status(500).json({ msg: 'Server Error.', error: error.message });
     }
 };
 
-//get request for blog filtering by id
+
+// Get request for blog filtering by id
 exports.getBlogById = async (req, res) => {
     try {
-        const query = 'SELECT * FROM public."Blog" WHERE id = $1';
+        const query = 'SELECT * FROM Blog WHERE id = ?';
         const values = [req.params.postId];
-        const result = await client.query(query, values);
 
-        if (result.rows.length === 0) {
-            return res.status(404).json({ msg: 'Blog not found.' });
-        }
+        client.query(query, values, (error, results) => {
+            if (error) {
+                console.error(error);
+                return res.status(500).json({ msg: 'Server Error.', error: error.message });
+            }
 
-        res.status(200).json(result.rows[0]);
+            if (results.length === 0) {
+                return res.status(404).json({ msg: 'Blog not found.' });
+            }
+
+            res.status(200).json(results[0]);
+        });
     } catch (error) {
         console.error(error);
         res.status(500).json({ msg: 'Server Error.', error: error.message });
@@ -54,7 +73,8 @@ exports.getBlogById = async (req, res) => {
 };
 
 
-//update request for blog
+
+// Update request for blog
 exports.updateBlog = async (req, res) => {
     try {
         const { title, short_description, description } = req.body;
@@ -62,20 +82,23 @@ exports.updateBlog = async (req, res) => {
         const blogId = req.params.postId;
 
         const query = `
-            UPDATE public."Blog"
-            SET title = $1, short_description = $2, description = $3, image = COALESCE($4, image), updated_at = NOW()
-            WHERE id = $5
-            RETURNING *`;
-
+            UPDATE Blog
+            SET title = ?, short_description = ?, description = ?, image = COALESCE(?, image), updated_at = NOW()
+            WHERE id = ?`;
         const values = [title, short_description, description, image, blogId];
 
-        const result = await client.query(query, values);
+        client.query(query, values, (error, results) => {
+            if (error) {
+                console.error(error);
+                return res.status(500).json({ msg: 'Server Error.', error: error.message });
+            }
 
-        if (result.rows.length === 0) {
-            return res.status(404).json({ msg: 'Blog not found.' });
-        }
+            if (results.affectedRows === 0) {
+                return res.status(404).json({ msg: 'Blog not found.' });
+            }
 
-        res.status(200).json({ msg: 'Blog updated successfully.', data: result.rows[0] });
+            res.status(200).json({ msg: 'Blog updated successfully.', data: results });
+        });
     } catch (error) {
         console.error(error);
         res.status(500).json({ msg: 'Server Error.', error: error.message });
@@ -83,27 +106,31 @@ exports.updateBlog = async (req, res) => {
 };
 
 
-//delete request for blog
+
+// Delete request for blog
 exports.deleteBlog = async (req, res) => {
     try {
         const blogId = req.params.postId;
-        const query = `
-            DELETE FROM public."Blog"
-            WHERE id = $1
-            RETURNING *`;
+        const query = 'DELETE FROM Blog WHERE id = ?';
         const values = [blogId];
 
-        const result = await client.query(query, values);
+        client.query(query, values, (error, results) => {
+            if (error) {
+                console.error(error);
+                return res.status(500).json({ msg: 'Server Error.', error: error.message });
+            }
 
-        if (result.rows.length === 0) {
-            return res.status(404).json({ msg: 'Blog not found.' });
-        }
+            if (results.affectedRows === 0) {
+                return res.status(404).json({ msg: 'Blog not found.' });
+            }
 
-        res.status(200).json({ msg: 'Blog deleted successfully.', data: result.rows[0] });
+            res.status(200).json({ msg: 'Blog deleted successfully.', data: results });
+        });
     } catch (error) {
         console.error(error);
         res.status(500).json({ msg: 'Server Error.', error: error.message });
     }
 };
+
 
 

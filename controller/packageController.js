@@ -1,5 +1,5 @@
-const client = require('../utils/db'); // Import your PostgreSQL client
-const baseUrl = 'http://localhost:8888'
+const mysql = require('../utils/db'); // Assuming this file contains the MySQL connection setup
+const baseUrl = 'http://localhost:8888';
 
 // Posting the package
 exports.postPackage = async (req, res) => {
@@ -13,102 +13,126 @@ exports.postPackage = async (req, res) => {
         }
 
         const query = `
-            INSERT INTO public."Package" (category_id, sub_category_id, title, short_description, description, duration, currency, price, package_image, overall_ratings, language_id)
-            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
-            RETURNING *`;
+            INSERT INTO Package (category_id, sub_category_id, title, short_description, description, duration, currency, price, package_image, overall_ratings, language_id)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`;
 
         const values = [category_id, sub_category_id, title, short_description, description, duration, currency, price, package_image, overall_ratings, language_id];
 
-        const savedPackage = await client.query(query, values);
-
-        res.status(201).json({ msg: 'Package Successfully Added.', resp: savedPackage.rows[0] });
+        mysql.query(query, values, (error, result) => {
+            if (error) {
+                console.error(error);
+                return res.status(500).json({ msg: 'Server Error.', error: error.message });
+            }
+            res.status(201).json({ msg: 'Package Successfully Added.', resp: { id: result.insertId, ...req.body, package_image } });
+        });
     } catch (error) {
         console.error(error);
         res.status(500).json({ msg: 'Server Error.', error: error.message });
     }
-}
+};
 
 // Get request for the package
 exports.getPackage = async (req, res) => {
     try {
-        const query = 'SELECT * FROM public."Package"';
-        const result = await client.query(query);
+        const query = 'SELECT * FROM Package';
 
-        res.status(200).json(result.rows);
+        mysql.query(query, (error, results) => {
+            if (error) {
+                console.error(error);
+                return res.status(500).json({ msg: 'Server Error.', error: error.message });
+            }
+            res.status(200).json(results);
+        });
     } catch (error) {
         console.error(error);
         res.status(500).json({ msg: 'Server Error.', error: error.message });
     }
-}
+};
 
-// Get request for the package pagination
+// Get request for package pagination
 exports.getPackagePagination = async (req, res) => {
     try {
         const page = parseInt(req.query.page) || 1;
         const limitPerPage = 10;
         const skip = (page - 1) * limitPerPage;
 
-        const query = 'SELECT * FROM public."Package" OFFSET $1 LIMIT $2';
+        const query = 'SELECT * FROM Package LIMIT ?, ?';
         const values = [skip, limitPerPage];
 
-        const result = await client.query(query, values);
-
-        res.status(200).json(result.rows);
+        mysql.query(query, values, (error, results) => {
+            if (error) {
+                console.error(error);
+                return res.status(500).json({ msg: 'Server Error.', error: error.message });
+            }
+            res.status(200).json(results);
+        });
     } catch (error) {
         console.error(error);
         res.status(500).json({ msg: 'Server Error.', error: error.message });
     }
-}
+};
 
 // Get request for package filtering by id
 exports.getPackageById = async (req, res) => {
     try {
-        const query = 'SELECT * FROM public."Package" WHERE id = $1';
+        const query = 'SELECT * FROM Package WHERE id = ?';
         const values = [req.params.postId];
 
-        const result = await client.query(query, values);
-
-        if (result.rows.length === 0) {
-            return res.status(404).json({ msg: 'Package not found.' });
-        }
-
-        res.status(200).json(result.rows[0]);
+        mysql.query(query, values, (error, result) => {
+            if (error) {
+                console.error(error);
+                return res.status(500).json({ msg: 'Server Error.', error: error.message });
+            }
+            if (result.length === 0) {
+                return res.status(404).json({ msg: 'Package not found.' });
+            }
+            res.status(200).json(result[0]);
+        });
     } catch (error) {
         console.error(error);
         res.status(500).json({ msg: 'Server Error.', error: error.message });
     }
-}
+};
+
 // Get request for package filtering by category
 exports.getPackageByCategory = async (req, res) => {
     try {
         const category_id = req.params.category_id;
-        const query = 'SELECT * FROM public."Package" WHERE category_id = $1';
+        const query = 'SELECT * FROM Package WHERE category_id = ?';
         const values = [category_id];
 
-        const result = await client.query(query, values);
-
-        res.status(200).json(result.rows);
+        mysql.query(query, values, (error, result) => {
+            if (error) {
+                console.error(error);
+                return res.status(500).json({ msg: 'Server Error.', error: error.message });
+            }
+            res.status(200).json(result);
+        });
     } catch (error) {
         console.error(error);
         res.status(500).json({ msg: 'Server Error.', error: error.message });
     }
-}
+};
 
-// Get request for package filtering by sub category
+// Get request for package filtering by sub-category
 exports.getPackageBySubCategory = async (req, res) => {
     try {
         const sub_category_id = req.params.sub_category_id;
-        const query = 'SELECT * FROM public."Package" WHERE sub_category_id = $1';
+        const query = 'SELECT * FROM Package WHERE sub_category_id = ?';
         const values = [sub_category_id];
 
-        const result = await client.query(query, values);
-
-        res.status(200).json(result.rows);
+        mysql.query(query, values, (error, result) => {
+            if (error) {
+                console.error(error);
+                return res.status(500).json({ msg: 'Server Error.', error: error.message });
+            }
+            res.status(200).json(result);
+        });
     } catch (error) {
         console.error(error);
         res.status(500).json({ msg: 'Server Error.', error: error.message });
     }
-}
+};
 
 // Get request for package filtering by language
 exports.getPackageByLanguage = async (req, res) => {
@@ -118,17 +142,21 @@ exports.getPackageByLanguage = async (req, res) => {
         const perPage = parseInt(req.query.perPage) || 10;
         const skip = (page - 1) * perPage;
 
-        const query = 'SELECT * FROM public."Package" WHERE language_id = $1 OFFSET $2 LIMIT $3';
+        const query = 'SELECT * FROM Package WHERE language_id = ? LIMIT ?, ?';
         const values = [language_id, skip, perPage];
 
-        const result = await client.query(query, values);
-
-        res.status(200).json(result.rows);
+        mysql.query(query, values, (error, result) => {
+            if (error) {
+                console.error(error);
+                return res.status(500).json({ msg: 'Server Error.', error: error.message });
+            }
+            res.status(200).json(result);
+        });
     } catch (error) {
         console.error(error);
         res.status(500).json({ msg: 'Server Error.', error: error.message });
     }
-}
+};
 
 // Update the package using id
 exports.updatePackage = async (req, res) => {
@@ -152,10 +180,10 @@ exports.updatePackage = async (req, res) => {
         }
 
         const query = `
-            UPDATE public."Package"
-            SET category_id = $1, sub_category_id = $2, title = $3, short_description = $4, description = $5, duration = $6, currency = $7, price = $8, package_image = $9, overall_ratings = $10, language_id = $11
-            WHERE id = $12
-            RETURNING *`;
+            UPDATE Package
+            SET category_id = ?, sub_category_id = ?, title = ?, short_description = ?, description = ?, duration = ?, currency = ?, price = ?, package_image = ?, overall_ratings = ?, language_id = ?
+            WHERE id = ?
+            LIMIT 1`;
 
         const values = [
             updateFields.category_id,
@@ -172,63 +200,64 @@ exports.updatePackage = async (req, res) => {
             packageId,
         ];
 
-        const updatedPackage = await client.query(query, values);
-
-        if (updatedPackage.rows.length === 0) {
-            return res.status(404).json({ msg: 'Package not found.' });
-        }
-
-        res.status(200).json({ msg: 'Package updated successfully.', data: updatedPackage.rows[0] });
+        mysql.query(query, values, (error, result) => {
+            if (error) {
+                console.error(error);
+                return res.status(500).json({ msg: 'Server Error.', error: error.message });
+            }
+            if (result.affectedRows === 0) {
+                return res.status(404).json({ msg: 'Package not found.' });
+            }
+            res.status(200).json({ msg: 'Package updated successfully.', data: updateFields });
+        });
     } catch (error) {
         console.error(error);
         res.status(500).json({ msg: 'Server Error.', error: error.message });
     }
-}
+};
 
 // Delete request for package
 exports.deletePackage = async (req, res) => {
     try {
         const packageId = req.params.postId;
 
-        const deleteIncludeExcludePackageQuery = 'DELETE FROM public."IncludeExcludePackage" WHERE package_id = $1';
-        const deleteIncludeExcludePackageValues = [packageId];
-        await client.query(deleteIncludeExcludePackageQuery, deleteIncludeExcludePackageValues);
+        // Deleting related records first
+        const deleteQueries = [
+            { query: 'DELETE FROM IncludeExcludePackage WHERE package_id = ?', values: [packageId] },
+            { query: 'DELETE FROM FaqPackage WHERE package_id = ?', values: [packageId] },
+            { query: 'DELETE FROM Itinerary WHERE package_id = ?', values: [packageId] },
+            { query: 'DELETE FROM EssentialInformation WHERE package_id = ?', values: [packageId] },
+            { query: 'DELETE FROM PackageImage WHERE package_id = ?', values: [packageId] },
+            { query: 'DELETE FROM PackageGallery WHERE package_id = ?', values: [packageId] },
+            { query: 'DELETE FROM ReviewTable WHERE package_id = ?', values: [packageId] },
+        ];
 
-        const deleteFaqPackageQuery = 'DELETE FROM public."FaqPackage" WHERE package_id = $1';
-        const deleteFaqPackageValues = [packageId];
-        await client.query(deleteFaqPackageQuery, deleteFaqPackageValues);
-
-        const deleteItiPackageQuery = 'DELETE FROM public."Itinerary" WHERE package_id = $1';
-        const deleteItiPackageValues = [packageId];
-        await client.query(deleteItiPackageQuery, deleteItiPackageValues);
-
-        const deleteEssPackageQuery = 'DELETE FROM public."EssentialInformation" WHERE package_id = $1';
-        const deleteEssPackageValues = [packageId];
-        await client.query(deleteEssPackageQuery, deleteEssPackageValues);
-
-        const deletePacImgPackageQuery = 'DELETE FROM public."PackageImage" WHERE package_id = $1';
-        const deletePacImgPackageValues = [packageId];
-        await client.query(deletePacImgPackageQuery, deletePacImgPackageValues);
-
-        const deletePacGalPackageQuery = 'DELETE FROM public."PackageGallery" WHERE package_id = $1';
-        const deletePacGalPackageValues = [packageId];
-        await client.query(deletePacGalPackageQuery, deletePacGalPackageValues);
-
-        const deletePacRevPackageQuery = 'DELETE FROM public."ReviewTable" WHERE package_id = $1';
-        const deletePacRevPackageValues = [packageId];
-        await client.query(deletePacRevPackageQuery, deletePacRevPackageValues);
-
-        const deletePackageQuery = 'DELETE FROM public."Package" WHERE id = $1';
-        const deletePackageValues = [packageId];
-        const result = await client.query(deletePackageQuery, deletePackageValues);
-
-        if (result.rowCount === 0) {
-            return res.status(404).json({ msg: 'Package not found.' });
+        for (const { query, values } of deleteQueries) {
+            await new Promise((resolve, reject) => {
+                mysql.query(query, values, (error) => {
+                    if (error) {
+                        reject(error);
+                    }
+                    resolve();
+                });
+            });
         }
 
-        res.status(200).json({ msg: 'Package deleted successfully.' });
+        const deletePackageQuery = 'DELETE FROM Package WHERE id = ?';
+        const deletePackageValues = [packageId];
+        
+        mysql.query(deletePackageQuery, deletePackageValues, (error, result) => {
+            if (error) {
+                console.error(error);
+                return res.status(500).json({ msg: 'Server Error.', error: error.message });
+            }
+            if (result.affectedRows === 0) {
+                return res.status(404).json({ msg: 'Package not found.' });
+            }
+            res.status(200).json({ msg: 'Package deleted successfully.' });
+        });
     } catch (error) {
         console.error(error);
         res.status(500).json({ msg: 'Server Error.', error: error.message });
     }
-}
+};

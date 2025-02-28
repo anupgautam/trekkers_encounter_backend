@@ -1,29 +1,30 @@
-const { Pool } = require("pg");
-const client = require("../utils/db");
+const mysql = require('../utils/db'); // Import MySQL client
 
-
-//posting the faq package
+// Posting the FAQ package
 exports.postFaqPackage = async (req, res) => {
     try {
         const { package_id, faq_id } = req.body;
-
-        const query = `
-      INSERT INTO public."FaqPackage" (package_id, faq_id)
-      VALUES ($1, $2)
-      RETURNING *`;
+        const query = `INSERT INTO FaqPackage (package_id, faq_id) VALUES (?, ?)`;
 
         const values = [package_id, faq_id];
 
-        const savedFaqPackage = await client.query(query, values);
+        mysql.query(query, values, (error, result) => {
+            if (error) {
+                console.error(error);
+                return res.status(500).json({ msg: 'Server Error.', error: error.message });
+            }
 
-        res.status(201).json({ msg: 'Faq Package Successfully Added.', resp: savedFaqPackage.rows[0] });
+            const savedFaqPackage = { id: result.insertId, package_id, faq_id };
+
+            res.status(201).json({ msg: 'Faq Package Successfully Added.', resp: savedFaqPackage });
+        });
     } catch (error) {
         console.error(error);
         res.status(500).json({ msg: 'Server Error.', error: error.message });
     }
 };
 
-//bulk faq
+// Bulk posting FAQ packages
 exports.postBulkFaqPackage = async (req, res) => {
     try {
         const { faqPackageItems } = req.body;
@@ -41,68 +42,90 @@ exports.postBulkFaqPackage = async (req, res) => {
                 return res.status(400).json({ msg: 'Missing required fields in faqPackageItem.' });
             }
 
-            const query = `
-        INSERT INTO public."FaqPackage" (package_id, faq_id)
-        VALUES ($1, $2)
-        RETURNING *`;
+            const query = `INSERT INTO FaqPackage (package_id, faq_id) VALUES (?, ?)`;
 
             const values = [package_id, faq_id];
 
-            const savedItem = await client.query(query, values);
+            mysql.query(query, values, (error, result) => {
+                if (error) {
+                    console.error(error);
+                    return res.status(500).json({ msg: 'Server Error.', error });
+                }
 
-            savedFaqPackages.push(savedItem.rows[0]);
+                savedFaqPackages.push({ id: result.insertId, package_id, faq_id });
+
+                if (savedFaqPackages.length === faqPackageItems.length) {
+                    res.status(201).json({ msg: 'Bulk FaqPackages Successfully Added.', resp: savedFaqPackages });
+                }
+            });
         }
-
-        res.status(201).json({ msg: 'Bulk FaqPackages Successfully Added.', resp: savedFaqPackages });
     } catch (error) {
         console.error(error);
         res.status(500).json({ msg: 'Server Error.', error });
     }
 };
 
-//get the faq package
+// Get all FAQ packages
 exports.getFaqPackage = async (req, res) => {
     try {
-        const getSub = await client.query('SELECT * FROM public."FaqPackage"');
-        res.status(201).json(getSub.rows);
+        const query = 'SELECT * FROM FaqPackage';
+        mysql.query(query, (error, result) => {
+            if (error) {
+                console.error(error);
+                return res.status(500).json({ msg: 'Server Error.', error });
+            }
+            res.status(200).json(result);
+        });
     } catch (error) {
+        console.error(error);
         res.status(500).json({ msg: 'Server Error.', error });
     }
 };
 
-//get request for faq package filtering by id
+// Get FAQ package by ID
 exports.getFaqPackageById = async (req, res) => {
     try {
-        const query = 'SELECT * FROM public."FaqPackage" WHERE id = $1';
+        const query = 'SELECT * FROM FaqPackage WHERE id = ?';
         const values = [req.params.postId];
 
-        const getItineraryId = await client.query(query, values);
+        mysql.query(query, values, (error, result) => {
+            if (error) {
+                console.error(error);
+                return res.status(500).json({ msg: 'Server Error.', error });
+            }
 
-        if (getItineraryId.rowCount === 0) {
-            return res.status(404).json({ msg: 'Faq Package not found.' });
-        }
+            if (result.length === 0) {
+                return res.status(404).json({ msg: 'Faq Package not found.' });
+            }
 
-        res.status(201).json(getItineraryId.rows[0]);
+            res.status(200).json(result[0]);
+        });
     } catch (error) {
+        console.error(error);
         res.status(500).json({ msg: 'Server Error.', error });
     }
 };
 
-//get request for faq package filtering by package
+// Get FAQ packages by package ID
 exports.getFaqByPackage = async (req, res) => {
     try {
-        const package_id = req.params.package_id;
-        const query = 'SELECT * FROM public."FaqPackage" WHERE package_id = $1';
-        const values = [package_id];
+        const query = 'SELECT * FROM FaqPackage WHERE package_id = ?';
+        const values = [req.params.package_id];
 
-        const getPackage = await client.query(query, values);
-        res.status(200).json(getPackage.rows);
+        mysql.query(query, values, (error, result) => {
+            if (error) {
+                console.error(error);
+                return res.status(500).json({ msg: 'Server Error.', error });
+            }
+            res.status(200).json(result);
+        });
     } catch (error) {
+        console.error(error);
         res.status(500).json({ msg: 'Server Error.', error });
     }
 };
 
-//bulk update
+// Bulk update FAQ packages
 exports.updateFaqPackageId = async (req, res) => {
     try {
         const { faqPackageItems } = req.body;
@@ -114,81 +137,95 @@ exports.updateFaqPackageId = async (req, res) => {
         const updatedFaqPackages = [];
         const { package_id } = faqPackageItems[0];
 
-        const existingFaqIdsQuery = `
-            SELECT faq_id FROM public."FaqPackage"
-            WHERE package_id = $1`;
-        const existingFaqIdsResult = await client.query(existingFaqIdsQuery, [package_id]);
-        const existingFaqIds = existingFaqIdsResult.rows.map(row => row.faq_id);
+        const existingFaqIdsQuery = 'SELECT faq_id FROM FaqPackage WHERE package_id = ?';
+        mysql.query(existingFaqIdsQuery, [package_id], (error, existingFaqIdsResult) => {
+            if (error) {
+                console.error(error);
+                return res.status(500).json({ msg: 'Server Error.', error });
+            }
 
-        const faqIdsToDelete = existingFaqIds.filter(faqId => !faqPackageItems.some(selectedItem => selectedItem.faq_id === faqId));
-        const faqIdsToInsertOrUpdate = faqPackageItems.filter(selectedItem => !existingFaqIds.includes(selectedItem.faq_id));
+            const existingFaqIds = existingFaqIdsResult.map(row => row.faq_id);
 
-        for (const faqIdToDelete of faqIdsToDelete) {
-            const deleteQuery = `
-                DELETE FROM public."FaqPackage"
-                WHERE package_id = $1 AND faq_id = $2`;
-            await client.query(deleteQuery, [package_id, faqIdToDelete]);
-        }
+            const faqIdsToDelete = existingFaqIds.filter(faqId => !faqPackageItems.some(selectedItem => selectedItem.faq_id === faqId));
+            const faqIdsToInsertOrUpdate = faqPackageItems.filter(selectedItem => !existingFaqIds.includes(selectedItem.faq_id));
 
-        for (const faqItemToInsertOrUpdate of faqIdsToInsertOrUpdate) {
-            const { faq_id } = faqItemToInsertOrUpdate;
-            const upsertQuery = `
-                INSERT INTO public."FaqPackage" (package_id, faq_id)
-                VALUES ($1, $2)
-                ON CONFLICT (package_id, faq_id) DO UPDATE
-                SET package_id = $1, faq_id = $2
-                RETURNING *`;
-            const upsertedFaqPackage = await client.query(upsertQuery, [package_id, faq_id]);
-            updatedFaqPackages.push(upsertedFaqPackage.rows[0]);
-        }
+            for (const faqIdToDelete of faqIdsToDelete) {
+                const deleteQuery = 'DELETE FROM FaqPackage WHERE package_id = ? AND faq_id = ?';
+                mysql.query(deleteQuery, [package_id, faqIdToDelete], (error, result) => {
+                    if (error) {
+                        console.error(error);
+                        return res.status(500).json({ msg: 'Server Error.', error });
+                    }
+                });
+            }
 
-        res.status(200).json({ msg: 'Bulk FaqPackages Successfully Updated.', updatedFaqPackages });
+            for (const faqItemToInsertOrUpdate of faqIdsToInsertOrUpdate) {
+                const { faq_id } = faqItemToInsertOrUpdate;
+                const upsertQuery = 'INSERT INTO FaqPackage (package_id, faq_id) VALUES (?, ?) ON DUPLICATE KEY UPDATE package_id = ?, faq_id = ?';
+                mysql.query(upsertQuery, [package_id, faq_id, package_id, faq_id], (error, result) => {
+                    if (error) {
+                        console.error(error);
+                        return res.status(500).json({ msg: 'Server Error.', error });
+                    }
+
+                    updatedFaqPackages.push({ package_id, faq_id });
+                });
+            }
+
+            res.status(200).json({ msg: 'Bulk FaqPackages Successfully Updated.', updatedFaqPackages });
+        });
     } catch (error) {
         console.error(error);
         res.status(500).json({ msg: 'Server Error.', error: error.message });
     }
 };
 
-
-//updating the faq package using id
+// Update FAQ package by ID
 exports.updateFaqPackage = async (req, res) => {
     try {
         const { package_id, faq_id } = req.body;
-        const query = `
-      UPDATE public."FaqPackage"
-      SET package_id = $1, faq_id = $2
-      WHERE id = $3
-      RETURNING *`;
+        const query = 'UPDATE FaqPackage SET package_id = ?, faq_id = ? WHERE id = ?';
 
         const values = [package_id, faq_id, req.params.postId];
 
-        const updateIti = await client.query(query, values);
+        mysql.query(query, values, (error, result) => {
+            if (error) {
+                console.error(error);
+                return res.status(500).json({ msg: 'Server Error.', error: error.message });
+            }
 
-        if (updateIti.rowCount === 0) {
-            return res.status(404).json({ msg: 'Faq Package not found.' });
-        }
+            if (result.affectedRows === 0) {
+                return res.status(404).json({ msg: 'Faq Package not found.' });
+            }
 
-        res.status(200).json({ msg: 'Faq Package updated successfully.', resp: updateIti.rows[0] });
+            res.status(200).json({ msg: 'Faq Package updated successfully.', resp: { package_id, faq_id } });
+        });
     } catch (error) {
         console.error(error);
         res.status(500).json({ msg: 'Server Error.', error: error.message });
     }
 };
 
-//delete request for faq package
+// Delete FAQ package by ID
 exports.deleteFaqPackage = async (req, res) => {
     try {
-        const query = 'DELETE FROM public."FaqPackage" WHERE id = $1';
+        const query = 'DELETE FROM FaqPackage WHERE id = ?';
         const values = [req.params.postId];
 
-        const delIti = await client.query(query, values);
+        mysql.query(query, values, (error, result) => {
+            if (error) {
+                console.error(error);
+                return res.status(500).json({ msg: 'Server Error.', error });
+            }
 
-        if (delIti.rowCount === 0) {
-            return res.status(404).json({ msg: "Data does not exist." });
-        }
+            if (result.affectedRows === 0) {
+                return res.status(404).json({ msg: "Data does not exist." });
+            }
 
-        res.status(201).json(delIti.rows[0]);
+            res.status(200).json({ msg: 'Faq Package deleted successfully.' });
+        });
     } catch (error) {
+        console.error(error);
         res.status(500).json({ msg: 'Server Error.', error });
     }
 };

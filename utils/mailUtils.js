@@ -4,12 +4,12 @@ const sendMail = (payload) => {
   const { message, to, title, link } = payload;
 
   const transporter = nodemailer.createTransport({
-    host: 'mail.himalayantoursandadventure.com',
+    host: 'mail.trekkersencounter.com',
     port: 465,
     secure: true,
     auth: {
-      user: 'support@himalayantoursandadventure.com',
-      pass: 'office@0977',
+      user: 'support@trekkersencounter.com',
+      pass: 'Office@0977',
     },
     debug: true,
   });
@@ -17,7 +17,7 @@ const sendMail = (payload) => {
 
 
   const mailOptions = {
-    from: 'support@himalayantoursandadventure.com',
+    from: 'support@trekkersencounter.com',
     to: to,
     subject: title,
     html: `
