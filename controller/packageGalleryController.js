@@ -1,5 +1,5 @@
 const client = require('../utils/db');
-const baseUrl = 'http://localhost:8888';
+const baseUrl = 'https://api.trekkersencounter.com';
 
 // Posting the package gallery
 exports.postPackageGallery = async (req, res) => {

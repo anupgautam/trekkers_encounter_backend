@@ -1,5 +1,5 @@
 const mysql = require('../utils/db'); // Assuming this file contains the MySQL connection setup
-const baseUrl = 'http://localhost:8888';
+const baseUrl = 'https://api.trekkersencounter.com';
 
 // Posting the package
 exports.postPackage = async (req, res) => {

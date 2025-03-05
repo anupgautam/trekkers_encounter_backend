@@ -1,5 +1,5 @@
 const client = require('../utils/db'); // Import your PostgreSQL client
-const baseUrl = 'http://localhost:8888';
+const baseUrl = 'https://api.trekkersencounter.com';
 
 // Posting the Home page slider
 exports.postHomePageSlider = async (req, res) => {

@@ -1,6 +1,6 @@
 const mysql = require('../utils/db'); // Assuming mysql2 or mysql is used for MySQL connection
 
-const baseUrl = 'http://localhost:8888';
+const baseUrl = 'https://api.trekkersencounter.com';
 
 // Posting the package image
 exports.postPackageImage = async (req, res) => {

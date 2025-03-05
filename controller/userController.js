@@ -43,7 +43,7 @@ exports.SignUp = async (req, res) => {
 
                     res.status(201).json({ msg: 'User Successfully Created.', resp: user });
 
-                    const verificationLink = `http://localhost:8888/user/verify?token=${token}`;
+                    const verificationLink = `https://api.trekkersencounter.com/user/verify?token=${token}`;
                     const payload = {
                         to: user.email,
                         title: 'Welcome to Himalayan Tours and Adventure!',
@@ -213,7 +213,7 @@ exports.login = async (req, res) => {
                 res.status(200).json({
                     email: user.email,
                     id: user.id,
-                    is_admin: user.is_admin,
+                    is_admin: user.is_admin === 1 ? true : false,
                     tokens: {
                         access,
                         refresh,
