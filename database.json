@@ -3,7 +3,7 @@
         "driver": "mysql",
         "user": "trekker1_trek_encounter",
         "password": "Office@0977",
-        "host": "localhost",
+        "host": "192.250.229.20",
         "database": "trekker1_encounter",
         "port": "3306"
     }

@@ -9,7 +9,7 @@ const mediaPath = '/media';
 
 const client = require('./utils/db');
 
-app.use(cors({ origin: 'https://trekkersencounter.com' }));
+app.use(cors({ origin: '*' }));
 
 client.connect((err) => {
     if (err) {

@@ -3,6 +3,7 @@ var basic = express.Router();
 var language = require('../controller/languageController');
 var category = require('../controller/categoryController');
 var subCategory = require('../controller/subCategoryController');
+var subSubCategory = require('../controller/subsubCategoryController');
 var package = require('../controller/packageController');
 var itinerary = require('../controller/itineraryController');
 var essential = require('../controller/essentialController');
@@ -63,6 +64,15 @@ basic.get('/sub_category_category/:category_id', subCategory.getSubCategoryByCat
 basic.patch('/sub_category/:postId', subCategory.updateSubCategory);
 basic.delete('/sub_category/:postId', subCategory.deleteSubCategory);
 
+//sub sub category api
+basic.post('/sub_sub_category/',subSubCategory.postSubSubCategory);
+basic.get('/sub_sub_category/', subSubCategory.getSubSubCategory);
+basic.get('/sub_sub_category/:postId', subSubCategory.getSubSubCategoryById);
+basic.get('/sub_sub_category_language/:language_id', subSubCategory.getSubSubCategoryByLanguage);
+basic.get('/sub_sub_category_sub_category/:sub_category_id', subSubCategory.getSubSubCategoryByCategory);
+basic.patch('/sub_sub_category/:postId', subSubCategory.updateSubSubCategory);
+basic.delete('/sub_sub_category/:postId', subSubCategory.deleteSubSubCategory);
+
 
 //package api 
 basic.post('/package/', upload1.single('package_image'), package.postPackage);
@@ -70,6 +80,7 @@ basic.get('/package/', package.getPackage);
 basic.get('/package/:postId', package.getPackageById);
 basic.get('/package_category/:category_id', package.getPackageByCategory);
 basic.get('/package_sub_category/:sub_category_id', package.getPackageBySubCategory);
+basic.get('/package_sub_sub_category/:sub_sub_category_id', package.getPackageBySubSubCategory);
 basic.get('/package_language/:language_id', package.getPackageByLanguage);
 basic.patch('/package/:postId', upload1.single('package_image'), package.updatePackage);
 basic.delete('/package/:postId', package.deletePackage);

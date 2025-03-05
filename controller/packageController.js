@@ -134,6 +134,26 @@ exports.getPackageBySubCategory = async (req, res) => {
     }
 };
 
+// Get request for package filtering by sub sub-category
+exports.getPackageBySubSubCategory = async (req, res) => {
+    try {
+        const sub_sub_category_id = req.params.sub_sub_category_id;
+        const query = 'SELECT * FROM Package WHERE sub_sub_category_id = ?';
+        const values = [sub_sub_category_id];
+
+        mysql.query(query, values, (error, result) => {
+            if (error) {
+                console.error(error);
+                return res.status(500).json({ msg: 'Server Error.', error: error.message });
+            }
+            res.status(200).json(result);
+        });
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ msg: 'Server Error.', error: error.message });
+    }
+};
+
 // Get request for package filtering by language
 exports.getPackageByLanguage = async (req, res) => {
     try {
@@ -245,7 +265,7 @@ exports.deletePackage = async (req, res) => {
 
         const deletePackageQuery = 'DELETE FROM Package WHERE id = ?';
         const deletePackageValues = [packageId];
-        
+
         mysql.query(deletePackageQuery, deletePackageValues, (error, result) => {
             if (error) {
                 console.error(error);
