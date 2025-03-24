@@ -104,6 +104,7 @@ exports.getReviewByPackage = async (req, res) => {
 // Get most reviewed packages and their reviews
 exports.getMostReviewedPackages = async (req, res) => {
     try {
+        // Query to get the most reviewed packages
         const query = `
             SELECT r.package_id, COUNT(r.id) AS total_reviews
             FROM ReviewTable r
@@ -112,25 +113,38 @@ exports.getMostReviewedPackages = async (req, res) => {
             LIMIT 5
         `;
 
-        const [result] = await client.execute(query);
-        const packages = result;
+        // Execute the query
+        const [packages] = await client.execute(query);
+
+        // Ensure packages are returned correctly
+        if (!packages || packages.length === 0) {
+            return res.status(404).json({ msg: 'No packages found' });
+        }
 
         const packageIds = packages.map((pkg) => pkg.package_id);
 
+        // Query to get reviews for the selected packages
         const reviewQuery = `
             SELECT *
             FROM ReviewTable r
             WHERE r.package_id IN (?)
         `;
-        const [reviewsResult] = await client.execute(reviewQuery, [packageIds.join(',')]);
-        const reviews = reviewsResult;
 
+        // Using MySQL query parameter replacement for an array of package IDs
+        const reviewValues = [packageIds]; // Pass array directly to the query
+
+        // Execute the review query
+        const [reviews] = await client.execute(reviewQuery, reviewValues);
+
+        // Send the response with packages and reviews
         res.status(200).json({ packages, reviews });
     } catch (error) {
         console.error(error);
         res.status(500).json({ msg: 'Server Error.', error });
     }
 };
+
+
 
 
 // Update a review by ID

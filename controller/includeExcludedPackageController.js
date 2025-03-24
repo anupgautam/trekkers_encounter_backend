@@ -115,29 +115,67 @@ exports.getIncludeExcludePackageById = async (req, res) => {
 }
 
 // Get Include/Exclude Package by Package ID
+
 exports.getIncludeExcludePackageByPackage = async (req, res) => {
     try {
         const package_id = req.params.package_id;
+
+        // Query to fetch IncludeExcludePackage records for the given package_id
         const query = 'SELECT * FROM IncludeExcludePackage WHERE package_id = ?';
         const values = [package_id];
 
-        mysql.query(query, values, (error, result) => {
-            if (error) {
-                console.error(error);
-                return res.status(500).json({ msg: 'Server Error.', error: error.message });
+        // Helper function to wrap mysql.query into a Promise
+        const queryAsync = (query, values) => {
+            return new Promise((resolve, reject) => {
+                mysql.query(query, values, (error, result) => {
+                    if (error) {
+                        reject(error);
+                    } else {
+                        resolve(result);
+                    }
+                });
+            });
+        };
+
+        // Fetching the IncludeExcludePackage data
+        const result = await queryAsync(query, values);
+
+        if (result.length === 0) {
+            return res.status(404).json({ msg: 'Include/Exclude Packages not found for the specified package.' });
+        }
+
+        // Combining the IncludeExcludePackage data with related IncludeExclude data
+        const combinedData = await Promise.all(result.map(async (data) => {
+            // Fetch the related IncludeExclude data
+            const query = 'SELECT * FROM IncludeExclude WHERE id = ?';
+            const values = [data.include_exclude_id];
+
+            // Fetch the IncludeExclude data
+            const singleData = await queryAsync(query, values);
+
+            if (singleData.length === 0) {
+                return { 
+                    id: data.id,
+                    package_id: data.package_id,
+                    include_exclude_id: null,  // If no related data found, set null
+                };
             }
 
-            if (result.length === 0) {
-                return res.status(404).json({ msg: 'Include/Exclude Packages not found for the specified package.' });
-            }
+            return {
+                id: data.id,
+                package_id: data.package_id,
+                include_exclude_id: singleData[0], // Including the first (and only) result from IncludeExclude
+            };
+        }));
 
-            res.status(200).json(result);
-        });
+        res.status(200).json(combinedData);
+
     } catch (error) {
         console.error(error);
         res.status(500).json({ msg: 'Server Error.', error: error.message });
     }
-}
+};
+
 
 // Bulk update
 exports.updateIncludeExcludePackageId = async (req, res) => {
@@ -184,7 +222,7 @@ exports.updateIncludeExcludePackageId = async (req, res) => {
                     INSERT INTO IncludeExcludePackage (package_id, include_exclude_id)
                     VALUES (?, ?)
                     ON DUPLICATE KEY UPDATE package_id = ?, include_exclude_id = ?`;
-                
+
                 mysql.query(upsertQuery, [package_id, include_exclude_id, package_id, include_exclude_id], (error, result) => {
                     if (error) {
                         console.error(error);

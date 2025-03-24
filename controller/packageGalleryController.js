@@ -14,18 +14,24 @@ exports.postPackageGallery = async (req, res) => {
 
         const values = [package_id, image];
 
-        const [result] = await client.execute(query, values);
+        const result = await client.execute(query, values);
 
         // Check if the associated package exists by ID
         const packageQuery = 'SELECT * FROM Package WHERE id = ?';
-        await client.execute(packageQuery, [package_id]);
+        const packageRows = await client.execute(packageQuery, [package_id]);
 
-        res.status(201).json({ msg: 'Package gallery Successfully Added.', resp: result });
+        if (packageRows.length === 0) {
+            return res.status(404).json({ msg: 'Package not found.' });
+        }
+
+        res.status(201).json({ msg: 'Package gallery successfully added.', resp: result });
     } catch (error) {
         console.error(error);
         res.status(500).json({ msg: 'Server Error.', error: error.message });
     }
-}
+};
+
+
 
 // Bulk creating package gallery
 exports.postBulkPackageGallery = async (req, res) => {
@@ -67,14 +73,16 @@ exports.postBulkPackageGallery = async (req, res) => {
 exports.getPackageGallery = async (req, res) => {
     try {
         const query = 'SELECT * FROM PackageGallery';
-        const [result] = await client.execute(query);
+        const result = await client.execute(query);
+
 
         res.status(200).json(result);
     } catch (error) {
         console.error(error);
         res.status(500).json({ msg: 'Server Error.', error: error.message });
     }
-}
+};
+
 
 
 // Get package gallery by ID
@@ -102,14 +110,21 @@ exports.getPackageGalleryByPackage = async (req, res) => {
         const packageId = req.params.package_id;
         const query = 'SELECT * FROM PackageGallery WHERE package_id = ?';
         const values = [packageId];
-        const [result] = await client.execute(query, values);
 
-        res.status(200).json(result);
+        client.execute(query, values, (error, result) => {
+            if (error) {
+                console.error(error);
+                return res.status(500).json({ msg: 'Server Error.', error: error.message });
+            }
+            res.status(200).json(result);
+        });
     } catch (error) {
         console.error(error);
         res.status(500).json({ msg: 'Server Error.', error: error.message });
     }
-}
+};
+
+
 
 
 // Update the package gallery using ID

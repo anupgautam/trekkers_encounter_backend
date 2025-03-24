@@ -5,21 +5,21 @@ const baseUrl = 'https://api.trekkersencounter.com';
 // Posting the package image
 exports.postPackageImage = async (req, res) => {
     try {
-        const { package_id, update_at } = req.body;
+        const { package_id } = req.body; 
         const image = `${baseUrl}/${req.file.path}`;
 
         const query = `
-            INSERT INTO PackageImage (package_id, image, update_at)
-            VALUES (?, ?, ?)`;
+            INSERT INTO PackageImage (package_id, image)
+            VALUES (?, ?)`;
 
-        const values = [package_id, image, update_at];
+        const values = [package_id, image];
 
         mysql.query(query, values, (error, result) => {
             if (error) {
                 console.error(error);
                 return res.status(500).json({ msg: 'Server Error.', error: error.message });
             }
-            const newImage = { id: result.insertId, ...req.body, image };
+            const newImage = { id: result.insertId, package_id, image };
             res.status(201).json({ msg: 'Package Image Successfully Added.', resp: newImage });
         });
     } catch (error) {
@@ -27,6 +27,7 @@ exports.postPackageImage = async (req, res) => {
         res.status(500).json({ msg: 'Server Error.', error: error.message });
     }
 };
+
 
 // Posting multiple package images (bulk upload)
 exports.postBulkPackageImages = async (req, res) => {
