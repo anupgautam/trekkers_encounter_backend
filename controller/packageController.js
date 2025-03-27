@@ -4,11 +4,11 @@ const baseUrl = 'https://api.trekkersencounter.com';
 // Posting the package
 exports.postPackage = async (req, res) => {
     try {
-        const { category_id, sub_category_id, title, short_description, description, duration, currency, price, overall_ratings, language_id } = req.body;
+        const { category_id, sub_category_id, sub_sub_category_id, title, short_description, description, duration, currency, price, overall_ratings, language_id } = req.body;
         const package_image = `${baseUrl}/${req.file.path}`;
 
         // Check if required fields are provided
-        if (!category_id || !sub_category_id || !title || !short_description || !description || !duration || !currency || !price || !package_image || !language_id) {
+        if (!category_id || !title || !short_description || !description || !duration || !currency || !price || !package_image || !language_id) {
             return res.status(400).json({ msg: 'Missing required fields.' });
         }
 
@@ -16,7 +16,7 @@ exports.postPackage = async (req, res) => {
             INSERT INTO Package (category_id, sub_category_id, title, short_description, description, duration, currency, price, package_image, overall_ratings, language_id)
             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`;
 
-        const values = [category_id, sub_category_id, title, short_description, description, duration, currency, price, package_image, overall_ratings, language_id];
+        const values = [category_id, sub_category_id, title, short_description, description, duration, currency, price, package_image, overall_ratings, language_id, sub_sub_category_id];
 
         mysql.query(query, values, (error, result) => {
             if (error) {
