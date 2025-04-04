@@ -166,13 +166,13 @@ basic.patch('/include_exclude_package/:postId', includeexcludepackage.updateIncl
 basic.delete('/include_exclude_package/:postId', includeexcludepackage.deleteIncludeExcludePackage);
 
 //package review api
-basic.post('/review/', review.postReview);
-basic.get('/review/', review.getReview);
-basic.get('/most/reviewed/', review.getMostReviewedPackages);
-basic.get('/review/:postId', review.getReviewById);
-basic.get('/review_package/:package_id', review.getReviewByPackage);
-basic.patch('/review/:postId', review.updateReview);
-basic.delete('/review/:postId', review.deleteReview);
+// basic.post('/review/', review.postReview);
+// basic.get('/review/', review.getReview);
+// basic.get('/most/reviewed/', review.getMostReviewedPackages);
+// basic.get('/review/:postId', review.getReviewById);
+// basic.get('/review_package/:package_id', review.getReviewByPackage);
+// basic.patch('/review/:postId', review.updateReview);
+// basic.delete('/review/:postId', review.deleteReview);
 
 
 //package booking api

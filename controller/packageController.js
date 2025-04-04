@@ -4,7 +4,21 @@ const baseUrl = 'https://api.trekkersencounter.com';
 // Posting the package
 exports.postPackage = async (req, res) => {
     try {
-        const { category_id, sub_category_id, sub_sub_category_id, title, short_description, description, duration, currency, price, overall_ratings, language_id } = req.body;
+        const { 
+            category_id, 
+            sub_category_id, 
+            sub_sub_category_id, 
+            title, 
+            short_description, 
+            description, 
+            duration, 
+            currency, 
+            price, 
+            overall_ratings, 
+            language_id 
+        } = req.body;
+
+        // Set sub_category_id to NULL if not provided
         const package_image = `${baseUrl}/${req.file.path}`;
 
         // Check if required fields are provided
@@ -12,11 +26,27 @@ exports.postPackage = async (req, res) => {
             return res.status(400).json({ msg: 'Missing required fields.' });
         }
 
+        // Handle the case where sub_category_id is optional and can be NULL
         const query = `
-            INSERT INTO Package (category_id, sub_category_id, title, short_description, description, duration, currency, price, package_image, overall_ratings, language_id)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`;
+            INSERT INTO Package 
+            (category_id, sub_category_id, sub_sub_category_id, title, short_description, description, duration, currency, price, package_image, overall_ratings, language_id)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`;
 
-        const values = [category_id, sub_category_id, title, short_description, description, duration, currency, price, package_image, overall_ratings, language_id, sub_sub_category_id];
+        // If sub_category_id is not provided, use NULL for it
+        const values = [
+            category_id, 
+            sub_category_id || null, // If sub_category_id is not provided, set it to NULL
+            sub_sub_category_id, 
+            title, 
+            short_description, 
+            description, 
+            duration, 
+            currency, 
+            price, 
+            package_image, 
+            overall_ratings, 
+            language_id
+        ];
 
         mysql.query(query, values, (error, result) => {
             if (error) {
@@ -30,6 +60,7 @@ exports.postPackage = async (req, res) => {
         res.status(500).json({ msg: 'Server Error.', error: error.message });
     }
 };
+
 
 // Get request for the package
 exports.getPackage = async (req, res) => {
@@ -182,54 +213,66 @@ exports.getPackageByLanguage = async (req, res) => {
 exports.updatePackage = async (req, res) => {
     try {
         const packageId = req.params.postId;
-        const updateFields = {
-            category_id: req.body.category_id,
-            sub_category_id: req.body.sub_category_id,
-            title: req.body.title,
-            short_description: req.body.short_description,
-            description: req.body.description,
-            duration: req.body.duration,
-            currency: req.body.currency,
-            price: req.body.price,
-            overall_ratings: req.body.overall_ratings,
-            language_id: req.body.language_id,
-        };
 
-        if (req.file && req.file.path) {
-            updateFields.package_image = `${baseUrl}/${req.file.path}`;
-        }
+        // Fetch existing package data
+        const selectQuery = `SELECT * FROM Package WHERE id = ? LIMIT 1`;
 
-        const query = `
-            UPDATE Package
-            SET category_id = ?, sub_category_id = ?, title = ?, short_description = ?, description = ?, duration = ?, currency = ?, price = ?, package_image = ?, overall_ratings = ?, language_id = ?
-            WHERE id = ?
-            LIMIT 1`;
-
-        const values = [
-            updateFields.category_id,
-            updateFields.sub_category_id,
-            updateFields.title,
-            updateFields.short_description,
-            updateFields.description,
-            updateFields.duration,
-            updateFields.currency,
-            updateFields.price,
-            updateFields.package_image,
-            updateFields.overall_ratings,
-            updateFields.language_id,
-            packageId,
-        ];
-
-        mysql.query(query, values, (error, result) => {
-            if (error) {
-                console.error(error);
-                return res.status(500).json({ msg: 'Server Error.', error: error.message });
+        mysql.query(selectQuery, [packageId], (err, results) => {
+            if (err) {
+                console.error(err);
+                return res.status(500).json({ msg: 'Server Error.', error: err.message });
             }
-            if (result.affectedRows === 0) {
+            if (results.length === 0) {
                 return res.status(404).json({ msg: 'Package not found.' });
             }
-            res.status(200).json({ msg: 'Package updated successfully.', data: updateFields });
+
+            const existingPackage = results[0]; // Get the existing package data
+
+            // Merge new values with existing values
+            const updateFields = {
+                category_id: req.body.category_id ?? existingPackage.category_id,
+                sub_category_id: req.body.sub_category_id ?? existingPackage.sub_category_id,
+                title: req.body.title ?? existingPackage.title,
+                short_description: req.body.short_description ?? existingPackage.short_description,
+                description: req.body.description ?? existingPackage.description,
+                duration: req.body.duration ?? existingPackage.duration,
+                currency: req.body.currency ?? existingPackage.currency,
+                price: req.body.price ?? existingPackage.price,
+                overall_ratings: req.body.overall_ratings ?? existingPackage.overall_ratings,
+                language_id: req.body.language_id ?? existingPackage.language_id,
+                package_image: req.file && req.file.path ? `${baseUrl}/${req.file.path}` : existingPackage.package_image,
+            };
+
+            const updateQuery = `
+                UPDATE Package
+                SET category_id = ?, sub_category_id = ?, title = ?, short_description = ?, description = ?, duration = ?, currency = ?, price = ?, package_image = ?, overall_ratings = ?, language_id = ?
+                WHERE id = ?
+                LIMIT 1`;
+
+            const values = [
+                updateFields.category_id,
+                updateFields.sub_category_id,
+                updateFields.title,
+                updateFields.short_description,
+                updateFields.description,
+                updateFields.duration,
+                updateFields.currency,
+                updateFields.price,
+                updateFields.package_image,
+                updateFields.overall_ratings,
+                updateFields.language_id,
+                packageId,
+            ];
+
+            mysql.query(updateQuery, values, (error, result) => {
+                if (error) {
+                    console.error(error);
+                    return res.status(500).json({ msg: 'Server Error.', error: error.message });
+                }
+                res.status(200).json({ msg: 'Package updated successfully.', data: updateFields });
+            });
         });
+
     } catch (error) {
         console.error(error);
         res.status(500).json({ msg: 'Server Error.', error: error.message });

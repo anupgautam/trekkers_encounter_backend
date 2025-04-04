@@ -30,32 +30,47 @@ exports.SignUp = async (req, res) => {
                     req.body.contact_no,
                     hash,
                     token,
-                    false,
-                    false,
+                    false,  // is_verified
+                    false,  // is_admin
                 ];
 
+                // Insert the user into the database
                 client.execute(query, values, (err, results) => {
                     if (err) {
                         return res.status(500).json({ msg: 'Error creating user.', err });
                     }
 
-                    const user = results[0]; // Assuming the result contains the inserted user
+                    // The inserted ID will be in results.insertId
+                    const userId = results.insertId;
 
-                    res.status(201).json({ msg: 'User Successfully Created.', resp: user });
+                    // Fetch the user details using the inserted ID
+                    client.execute('SELECT * FROM Users WHERE id = ?', [userId], (err, userResults) => {
+                        if (err) {
+                            return res.status(500).json({ msg: 'Error fetching user details.', err });
+                        }
 
-                    const verificationLink = `https://api.trekkersencounter.com/user/verify?token=${token}`;
-                    const payload = {
-                        to: user.email,
-                        title: 'Welcome to Himalayan Tours and Adventure!',
-                        message: `Dear sir/mam,
-                                    Welcome to Himalayan Tours and Adventure Pvt. Ltd.! We are thrilled to have you join our community of adventure seekers.
-                                    
-                                    Please verify your email by clicking the link below:
-                                    <a href="${verificationLink}">Verify Your Email</a>`,
-                        link: `${verificationLink}`,
-                    };
+                        if (userResults.length === 0) {
+                            return res.status(500).json({ msg: 'User not found after insert.' });
+                        }
 
-                    mailService.sendMail(payload);
+                        const user = userResults[0];  // Get the inserted user
+
+                        res.status(201).json({ msg: 'User Successfully Created.', resp: user });
+
+                        const verificationLink = `https://api.trekkersencounter.com/user/verify?token=${token}`;
+                        const payload = {
+                            to: user.email,
+                            title: 'Welcome to Trekkers Encounter Nepal!',
+                            message: `Dear sir/mam,
+                                      Welcome to Trekkers Encounter Nepal Pvt. Ltd.! We are thrilled to have you join our community of adventure seekers.
+                                      
+                                      Please verify your email by clicking the link below:
+                                      <a href="${verificationLink}">Verify Your Email</a>`,
+                            link: `${verificationLink}`,
+                        };
+
+                        mailService.sendMail(payload);
+                    });
                 });
             });
         } catch (err) {

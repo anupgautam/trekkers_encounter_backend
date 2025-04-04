@@ -21,8 +21,10 @@ exports.postBooking = async (req, res) => {
 
         const values = [package_id, user_id, booked_date, no_of_people, is_confirm, is_cancelled, status, description, contact_no];
 
-        const [result] = await client.execute(query, values);
+        // Correctly handle the result of client.execute
+        const result = await client.execute(query, values);
 
+        // Since it's an INSERT query, you can check the `insertId` for the inserted record.
         res.status(201).json({ msg: 'Booking Successfully Added.', resp: result });
     } catch (error) {
         console.error(error);

@@ -1,8 +1,8 @@
 CREATE TABLE `Package` (
     `id` INT AUTO_INCREMENT PRIMARY KEY,
     `category_id` INT,
-    `sub_category_id` INT,
-    `sub_sub_category_id` INT
+    `sub_category_id` INT NULL,
+    `sub_sub_category_id` INT NULL,
     `language_id` INT,
     `title` VARCHAR(255) NOT NULL,
     `short_description` VARCHAR(255) NOT NULL,
