@@ -12,7 +12,7 @@ var faq = require('../controller/faqController');
 var faqpackage = require('../controller/faqPackageController');
 var includeexclude = require('../controller/includeExcludeController');
 var includeexcludepackage = require('../controller/includeExcludedPackageController');
-var review = require('../controller/reviewController');
+// var review = require('../controller/reviewController');
 var booking = require('../controller/packageBookingController');
 var gallery = require('../controller/packageGalleryController');
 var homepage = require('../controller/homePageSliderController');
@@ -20,6 +20,7 @@ var about = require('../controller/aboutController');
 const multer = require("multer");
 var contact = require('../controller/contactController');
 var blog = require('../controller/blogController');
+var HomePagePackageController = require('../controller/homePagePackageController');
 
 
 // Define storage for multer
@@ -65,7 +66,7 @@ basic.patch('/sub_category/:postId', subCategory.updateSubCategory);
 basic.delete('/sub_category/:postId', subCategory.deleteSubCategory);
 
 //sub sub category api
-basic.post('/sub_sub_category/',subSubCategory.postSubSubCategory);
+basic.post('/sub_sub_category/', subSubCategory.postSubSubCategory);
 basic.get('/sub_sub_category/', subSubCategory.getSubSubCategory);
 basic.get('/sub_sub_category/:postId', subSubCategory.getSubSubCategoryById);
 basic.get('/sub_sub_category_language/:language_id', subSubCategory.getSubSubCategoryByLanguage);
@@ -261,6 +262,12 @@ basic.get('/blog/', blog.getBlog);
 basic.get('/blog/:postId', blog.getBlogById);
 basic.patch('/blog/:postId', upload5.single('image'), blog.updateBlog);
 basic.delete('/blog/:postId', blog.deleteBlog);
+
+basic.post('/home/page/package/', HomePagePackageController.postHomePagePackage);
+basic.get('/home/page/package/', HomePagePackageController.getAllHomePagePackage);
+basic.get('/home/page/package/:id', HomePagePackageController.getHomePagePackageById);
+basic.patch('/home/page/package/:id', HomePagePackageController.updateHomePagePackage);
+basic.delete('/home/page/package/', HomePagePackageController.deleteHomePagePackage);
 
 
 module.exports = basic;

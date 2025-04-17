@@ -83,14 +83,9 @@ exports.getPackage = async (req, res) => {
 // Get request for package pagination
 exports.getPackagePagination = async (req, res) => {
     try {
-        const page = parseInt(req.query.page) || 1;
-        const limitPerPage = 10;
-        const skip = (page - 1) * limitPerPage;
+        const query = 'SELECT * FROM Package';
 
-        const query = 'SELECT * FROM Package LIMIT ?, ?';
-        const values = [skip, limitPerPage];
-
-        mysql.query(query, values, (error, results) => {
+        mysql.query(query, (error, results) => {
             if (error) {
                 console.error(error);
                 return res.status(500).json({ msg: 'Server Error.', error: error.message });
@@ -102,6 +97,7 @@ exports.getPackagePagination = async (req, res) => {
         res.status(500).json({ msg: 'Server Error.', error: error.message });
     }
 };
+
 
 // Get request for package filtering by id
 exports.getPackageById = async (req, res) => {
@@ -189,12 +185,9 @@ exports.getPackageBySubSubCategory = async (req, res) => {
 exports.getPackageByLanguage = async (req, res) => {
     try {
         const language_id = req.params.language_id;
-        const page = parseInt(req.query.page) || 1;
-        const perPage = parseInt(req.query.perPage) || 10;
-        const skip = (page - 1) * perPage;
 
-        const query = 'SELECT * FROM Package WHERE language_id = ? LIMIT ?, ?';
-        const values = [language_id, skip, perPage];
+        const query = 'SELECT * FROM Package WHERE language_id = ?';
+        const values = [language_id];
 
         mysql.query(query, values, (error, result) => {
             if (error) {
@@ -208,6 +201,7 @@ exports.getPackageByLanguage = async (req, res) => {
         res.status(500).json({ msg: 'Server Error.', error: error.message });
     }
 };
+
 
 // Update the package using id
 exports.updatePackage = async (req, res) => {
