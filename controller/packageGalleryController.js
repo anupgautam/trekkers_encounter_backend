@@ -4,27 +4,23 @@ const baseUrl = 'https://api.trekkersencounter.com';
 // Posting the package gallery
 exports.postPackageGallery = async (req, res) => {
     try {
-        const { package_id } = req.body;
+        const { package_id } = req.body; 
         const image = `${baseUrl}/${req.file.path}`;
 
         const query = `
             INSERT INTO PackageGallery (package_id, image)
-            VALUES (?, ?)
-        `;
+            VALUES (?, ?)`;
 
         const values = [package_id, image];
 
-        const result = await client.execute(query, values);
-
-        // Check if the associated package exists by ID
-        const packageQuery = 'SELECT * FROM Package WHERE id = ?';
-        const packageRows = await client.execute(packageQuery, [package_id]);
-
-        if (packageRows.length === 0) {
-            return res.status(404).json({ msg: 'Package not found.' });
-        }
-
-        res.status(201).json({ msg: 'Package gallery successfully added.', resp: result });
+        client.execute(query, values, (error, result) => {
+            if (error) {
+                console.error(error);
+                return res.status(500).json({ msg: 'Server Error.', error: error.message });
+            }
+            const newImage = { id: result.insertId, package_id, image };
+            res.status(201).json({ msg: 'Package Image Successfully Added.', resp: newImage });
+        });
     } catch (error) {
         console.error(error);
         res.status(500).json({ msg: 'Server Error.', error: error.message });
@@ -53,15 +49,21 @@ exports.postBulkPackageGallery = async (req, res) => {
 
             const values = [package_id, image];
 
-            const [result] = await client.execute(query, values);
-            savedImages.push(result);
+            const result = await client.execute(query, values);
+            savedImages.push({
+                insertId: result.insertId,
+                affectedRows: result.affectedRows
+            });
         }
 
         // Check if the associated package exists by ID
         const packageQuery = 'SELECT * FROM Package WHERE id = ?';
         await client.execute(packageQuery, [package_id]);
 
-        res.status(201).json({ msg: 'Bulk Package Gallery Images Successfully Added.', resp: savedImages });
+        res.status(201).json({
+            msg: 'Bulk Package Gallery Images Successfully Added.',
+            resp: savedImages
+        });
     } catch (error) {
         console.error(error);
         res.status(500).json({ msg: 'Server Error.', error: error.message });
@@ -73,10 +75,12 @@ exports.postBulkPackageGallery = async (req, res) => {
 exports.getPackageGallery = async (req, res) => {
     try {
         const query = 'SELECT * FROM PackageGallery';
-        const result = await client.execute(query);
+        const [rows] = await client.execute(query);
 
+        // Convert each row to a plain object
+        const cleanResults = rows.map(row => ({ ...row }));
 
-        res.status(200).json(result);
+        res.status(200).json(cleanResults);
     } catch (error) {
         console.error(error);
         res.status(500).json({ msg: 'Server Error.', error: error.message });
@@ -91,13 +95,14 @@ exports.getPackageGalleryById = async (req, res) => {
         const galleryId = req.params.postId;
         const query = 'SELECT * FROM PackageGallery WHERE id = ?';
         const values = [galleryId];
-        const [result] = await client.execute(query, values);
+        const [rows] = await client.execute(query, values);
 
-        if (result.length === 0) {
+        if (rows.length === 0) {
             return res.status(404).json({ msg: 'Package Gallery not found.' });
         }
 
-        res.status(200).json(result[0]);
+        // Return a clean object without circular references
+        res.status(200).json(rows[0]);
     } catch (error) {
         console.error(error);
         res.status(500).json({ msg: 'Server Error.', error: error.message });
@@ -153,7 +158,13 @@ exports.updatePackageGallery = async (req, res) => {
             return res.status(404).json({ msg: 'Package Gallery not found.' });
         }
 
-        res.status(200).json({ msg: 'Package Gallery Updated Successfully.', resp: result });
+        res.status(200).json({
+            msg: 'Package Gallery Updated Successfully.',
+            resp: {
+                affectedRows: result.affectedRows,
+                changedRows: result.changedRows
+            }
+        });
     } catch (error) {
         console.error(error);
         res.status(500).json({ msg: 'Server Error.', error: error.message });
