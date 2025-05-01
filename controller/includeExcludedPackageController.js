@@ -154,7 +154,7 @@ exports.getIncludeExcludePackageByPackage = async (req, res) => {
             const singleData = await queryAsync(query, values);
 
             if (singleData.length === 0) {
-                return { 
+                return {
                     id: data.id,
                     package_id: data.package_id,
                     include_exclude_id: null,  // If no related data found, set null
@@ -185,6 +185,11 @@ exports.updateIncludeExcludePackageId = async (req, res) => {
         // Check if includeItems is an array
         if (!Array.isArray(includeItems)) {
             return res.status(400).json({ msg: 'includeItems should be an array.' });
+        }
+
+        // If empty array, return early with success
+        if (includeItems.length === 0) {
+            return res.status(200).json({ msg: 'No items to update.', updatedItems: [] });
         }
 
         const updatedIncludeExcludeItems = [];
@@ -240,6 +245,7 @@ exports.updateIncludeExcludePackageId = async (req, res) => {
         res.status(500).json({ msg: 'Server Error.', error: error.message });
     }
 };
+
 
 // Update Include/Exclude Package by ID
 exports.updateIncludeExcludePackage = async (req, res) => {

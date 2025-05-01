@@ -134,6 +134,10 @@ exports.updateFaqPackageId = async (req, res) => {
             return res.status(400).json({ msg: 'faqPackageItems should be an array.' });
         }
 
+        if (faqPackageItems.length === 0) {
+            return res.status(200).json({ msg: 'No items to update.', updatedFaqPackages: [] });
+        }
+
         const updatedFaqPackages = [];
         const { package_id } = faqPackageItems[0];
 
@@ -179,6 +183,7 @@ exports.updateFaqPackageId = async (req, res) => {
         res.status(500).json({ msg: 'Server Error.', error: error.message });
     }
 };
+
 
 // Update FAQ package by ID
 exports.updateFaqPackage = async (req, res) => {
