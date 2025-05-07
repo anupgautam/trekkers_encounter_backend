@@ -9,17 +9,26 @@ const mediaPath = '/media';
 
 const client = require('./utils/db');
 
+// Enable CORS for all origins
 app.use(cors({ origin: '*' }));
 
-client.connect((err) => {
-    if (err) {
+// Test the pool connection on startup
+client.getConnection()
+    .then((connection) => {
+        console.log("Successfully acquired a connection from the MySQL pool.");
+        connection.release(); // Release the connection back to the pool
+    })
+    .catch((err) => {
         console.error("MySQL DB Connection Error:", err);
-        return;
+    });
+
+// Handle pool errors (e.g., connection lost)
+client.on('error', (err) => {
+    console.error("Pool error:", err);
+    if (err.code === 'PROTOCOL_CONNECTION_LOST') {
+        console.log("Connection lost, pool will attempt to reconnect...");
     }
-    console.log("Connected to MySQL database.");
 });
-
-
 
 const port = 8888;
 

@@ -1,36 +1,37 @@
-const mysql = require('../utils/db'); // Import your MySQL client
+const client = require('../utils/db');
 
-// Posting the include/exclude package
+// Posting the Include/Exclude Package
 exports.postIncludeExcludePackage = async (req, res) => {
+    let connection;
     try {
         const { package_id, include_exclude_id } = req.body;
 
         // Check if required fields are provided
         if (!package_id || !include_exclude_id) {
-            return res.status(400).json({ msg: 'Missing required fields.' });
+            return res.status(400).json({ msg: 'Missing required fields: package_id and include_exclude_id are required.' });
         }
 
+        connection = await client.getConnection();
         const query = 'INSERT INTO IncludeExcludePackage (package_id, include_exclude_id) VALUES (?, ?)';
         const values = [package_id, include_exclude_id];
 
-        mysql.query(query, values, (error, result) => {
-            if (error) {
-                console.error(error);
-                return res.status(500).json({ msg: 'Server Error.', error: error.message });
-            }
+        const [result] = await connection.query(query, values);
+        const savedIncludeExcludePackage = { id: result.insertId, package_id, include_exclude_id };
 
-            const savedIncludeExcludePackage = { id: result.insertId, package_id, include_exclude_id };
-
-            res.status(201).json({ msg: 'Include/Exclude Package Successfully Added.', resp: savedIncludeExcludePackage });
-        });
+        res.status(201).json({ msg: 'Include/Exclude Package Successfully Added.', resp: savedIncludeExcludePackage });
     } catch (error) {
-        console.error(error);
+        console.error("Error in postIncludeExcludePackage:", error);
         res.status(500).json({ msg: 'Server Error.', error: error.message });
+    } finally {
+        if (connection) {
+            connection.release();
+        }
     }
-}
+};
 
-// Posting the include/exclude bulk package
+// Posting the Include/Exclude Bulk Package
 exports.postBulkIncludeExcludePackage = async (req, res) => {
+    let connection;
     try {
         const { includeItems } = req.body;
 
@@ -39,146 +40,140 @@ exports.postBulkIncludeExcludePackage = async (req, res) => {
             return res.status(400).json({ msg: 'includeItems should be an array.' });
         }
 
+        if (includeItems.length === 0) {
+            return res.status(400).json({ msg: 'No Include/Exclude items provided.' });
+        }
+
+        connection = await client.getConnection();
         const savedIncludeExcludeItems = [];
 
-        for (const item of includeItems) {
+        const insertPromises = includeItems.map(async (item) => {
             const { package_id, include_exclude_id } = item;
 
             // Check if required fields are provided
             if (!package_id || !include_exclude_id) {
-                return res.status(400).json({ msg: 'Missing required fields.' });
+                throw new Error('Missing required fields in one or more items.');
             }
 
             const query = 'INSERT INTO IncludeExcludePackage (package_id, include_exclude_id) VALUES (?, ?)';
             const values = [package_id, include_exclude_id];
 
-            mysql.query(query, values, (error, result) => {
-                if (error) {
-                    console.error(error);
-                    return res.status(500).json({ msg: 'Server Error.', error: error.message });
-                }
+            const [result] = await connection.query(query, values);
+            return { id: result.insertId, package_id, include_exclude_id };
+        });
 
-                const savedItem = { id: result.insertId, package_id, include_exclude_id };
-                savedIncludeExcludeItems.push(savedItem);
-            });
-        }
+        const results = await Promise.all(insertPromises);
+        savedIncludeExcludeItems.push(...results);
 
         res.status(201).json({ msg: 'Bulk Include/Exclude Items Successfully Added.', resp: savedIncludeExcludeItems });
     } catch (error) {
-        console.error(error);
+        console.error("Error in postBulkIncludeExcludePackage:", error);
         res.status(500).json({ msg: 'Server Error.', error: error.message });
+    } finally {
+        if (connection) {
+            connection.release();
+        }
     }
-}
+};
 
 // Get the Include/Exclude Package
 exports.getIncludeExcludePackage = async (req, res) => {
+    let connection;
     try {
+        connection = await client.getConnection();
         const query = 'SELECT * FROM IncludeExcludePackage';
 
-        mysql.query(query, (error, result) => {
-            if (error) {
-                console.error(error);
-                return res.status(500).json({ msg: 'Server Error.', error: error.message });
-            }
-
-            res.status(200).json(result);
-        });
+        const [results] = await connection.query(query);
+        res.status(200).json(results);
     } catch (error) {
-        console.error(error);
+        console.error("Error in getIncludeExcludePackage:", error);
         res.status(500).json({ msg: 'Server Error.', error: error.message });
+    } finally {
+        if (connection) {
+            connection.release();
+        }
     }
-}
+};
 
 // Get Include/Exclude Package by ID
 exports.getIncludeExcludePackageById = async (req, res) => {
+    let connection;
     try {
         const { postId } = req.params;
+        connection = await client.getConnection();
         const query = 'SELECT * FROM IncludeExcludePackage WHERE id = ?';
         const values = [postId];
 
-        mysql.query(query, values, (error, result) => {
-            if (error) {
-                console.error(error);
-                return res.status(500).json({ msg: 'Server Error.', error: error.message });
-            }
+        const [results] = await connection.query(query, values);
 
-            if (result.length === 0) {
-                return res.status(404).json({ msg: 'Include/Exclude Package not found.' });
-            }
+        if (results.length === 0) {
+            return res.status(404).json({ msg: 'Include/Exclude Package not found.' });
+        }
 
-            res.status(200).json(result[0]);
-        });
+        res.status(200).json(results[0]);
     } catch (error) {
-        console.error(error);
+        console.error("Error in getIncludeExcludePackageById:", error);
         res.status(500).json({ msg: 'Server Error.', error: error.message });
+    } finally {
+        if (connection) {
+            connection.release();
+        }
     }
-}
+};
 
 // Get Include/Exclude Package by Package ID
-
 exports.getIncludeExcludePackageByPackage = async (req, res) => {
+    let connection;
     try {
         const package_id = req.params.package_id;
+        connection = await client.getConnection();
 
-        // Query to fetch IncludeExcludePackage records for the given package_id
+        // Fetch IncludeExcludePackage records for the given package_id
         const query = 'SELECT * FROM IncludeExcludePackage WHERE package_id = ?';
         const values = [package_id];
 
-        // Helper function to wrap mysql.query into a Promise
-        const queryAsync = (query, values) => {
-            return new Promise((resolve, reject) => {
-                mysql.query(query, values, (error, result) => {
-                    if (error) {
-                        reject(error);
-                    } else {
-                        resolve(result);
-                    }
-                });
-            });
-        };
-
-        // Fetching the IncludeExcludePackage data
-        const result = await queryAsync(query, values);
+        const [result] = await connection.query(query, values);
 
         if (result.length === 0) {
             return res.status(404).json({ msg: 'Include/Exclude Packages not found for the specified package.' });
         }
 
-        // Combining the IncludeExcludePackage data with related IncludeExclude data
+        // Fetch related IncludeExclude data for each IncludeExcludePackage record
         const combinedData = await Promise.all(result.map(async (data) => {
-            // Fetch the related IncludeExclude data
             const query = 'SELECT * FROM IncludeExclude WHERE id = ?';
             const values = [data.include_exclude_id];
 
-            // Fetch the IncludeExclude data
-            const singleData = await queryAsync(query, values);
+            const [singleData] = await connection.query(query, values);
 
             if (singleData.length === 0) {
                 return {
                     id: data.id,
                     package_id: data.package_id,
-                    include_exclude_id: null,  // If no related data found, set null
+                    include_exclude_id: null,
                 };
             }
 
             return {
                 id: data.id,
                 package_id: data.package_id,
-                include_exclude_id: singleData[0], // Including the first (and only) result from IncludeExclude
+                include_exclude_id: singleData[0],
             };
         }));
 
         res.status(200).json(combinedData);
-
     } catch (error) {
-        console.error(error);
+        console.error("Error in getIncludeExcludePackageByPackage:", error);
         res.status(500).json({ msg: 'Server Error.', error: error.message });
+    } finally {
+        if (connection) {
+            connection.release();
+        }
     }
 };
 
-
-// Bulk update
+// Bulk update Include/Exclude Package
 exports.updateIncludeExcludePackageId = async (req, res) => {
+    let connection;
     try {
         const { includeItems } = req.body;
 
@@ -187,114 +182,110 @@ exports.updateIncludeExcludePackageId = async (req, res) => {
             return res.status(400).json({ msg: 'includeItems should be an array.' });
         }
 
-        // If empty array, return early with success
         if (includeItems.length === 0) {
             return res.status(200).json({ msg: 'No items to update.', updatedItems: [] });
         }
 
-        const updatedIncludeExcludeItems = [];
+        connection = await client.getConnection();
         const { package_id } = includeItems[0];
 
         // Fetch existing include_exclude items for the package_id
-        const existingItemsQuery = 'SELECT include_exclude_id FROM IncludeExcludePackage WHERE package_id = ?';
-        mysql.query(existingItemsQuery, [package_id], (error, result) => {
-            if (error) {
-                console.error(error);
-                return res.status(500).json({ msg: 'Server Error.', error: error.message });
-            }
+        const [existingItemsResult] = await connection.query('SELECT include_exclude_id FROM IncludeExcludePackage WHERE package_id = ?', [package_id]);
+        const existingItems = existingItemsResult.map(row => row.include_exclude_id);
 
-            const existingItems = result.map(row => row.include_exclude_id);
+        // Identify items to delete and insert/update
+        const itemsToDelete = existingItems.filter(item => !includeItems.some(selectedItem => selectedItem.include_exclude_id === item));
+        const itemsToInsertOrUpdate = includeItems.filter(selectedItem => !existingItems.includes(selectedItem.include_exclude_id));
 
-            // Identify items to delete and insert/update
-            const itemsToDelete = existingItems.filter(item => !includeItems.some(selectedItem => selectedItem.include_exclude_id === item));
-            const itemsToInsertOrUpdate = includeItems.filter(selectedItem => !existingItems.includes(selectedItem.include_exclude_id));
-
-            // Delete items that were removed in the multi-select
-            for (const itemToDelete of itemsToDelete) {
-                const deleteQuery = 'DELETE FROM IncludeExcludePackage WHERE package_id = ? AND include_exclude_id = ?';
-                mysql.query(deleteQuery, [package_id, itemToDelete], (error) => {
-                    if (error) {
-                        console.error(error);
-                        return res.status(500).json({ msg: 'Server Error.', error: error.message });
-                    }
-                });
-            }
-
-            // Insert or update newly selected items
-            for (const itemToInsertOrUpdate of itemsToInsertOrUpdate) {
-                const { include_exclude_id } = itemToInsertOrUpdate;
-                const upsertQuery = `
-                    INSERT INTO IncludeExcludePackage (package_id, include_exclude_id)
-                    VALUES (?, ?)
-                    ON DUPLICATE KEY UPDATE package_id = ?, include_exclude_id = ?`;
-
-                mysql.query(upsertQuery, [package_id, include_exclude_id, package_id, include_exclude_id], (error, result) => {
-                    if (error) {
-                        console.error(error);
-                        return res.status(500).json({ msg: 'Server Error.', error: error.message });
-                    }
-
-                    updatedIncludeExcludeItems.push({ id: result.insertId, package_id, include_exclude_id });
-                });
-            }
-
-            res.status(200).json({ msg: 'Bulk Include/Exclude Items Successfully Updated.', updatedItems: updatedIncludeExcludeItems });
+        // Perform deletions
+        const deletePromises = itemsToDelete.map(async (itemToDelete) => {
+            const [deleteResult] = await connection.query('DELETE FROM IncludeExcludePackage WHERE package_id = ? AND include_exclude_id = ?', [package_id, itemToDelete]);
+            return deleteResult;
         });
+
+        // Perform inserts/updates
+        const upsertPromises = itemsToInsertOrUpdate.map(async (item) => {
+            const { include_exclude_id } = item;
+            const [upsertResult] = await connection.query(
+                'INSERT INTO IncludeExcludePackage (package_id, include_exclude_id) VALUES (?, ?) ON DUPLICATE KEY UPDATE package_id = ?, include_exclude_id = ?',
+                [package_id, include_exclude_id, package_id, include_exclude_id]
+            );
+            return { id: upsertResult.insertId, package_id, include_exclude_id };
+        });
+
+        const upsertResults = await Promise.all([...deletePromises, ...upsertPromises]);
+        const updatedIncludeExcludeItems = upsertResults.filter(result => result.id).map(result => ({
+            id: result.id,
+            package_id: result.package_id,
+            include_exclude_id: result.include_exclude_id
+        }));
+
+        res.status(200).json({ msg: 'Bulk Include/Exclude Items Successfully Updated.', updatedItems: updatedIncludeExcludeItems });
     } catch (error) {
-        console.error(error);
+        console.error("Error in updateIncludeExcludePackageId:", error);
         res.status(500).json({ msg: 'Server Error.', error: error.message });
+    } finally {
+        if (connection) {
+            connection.release();
+        }
     }
 };
 
-
 // Update Include/Exclude Package by ID
 exports.updateIncludeExcludePackage = async (req, res) => {
+    let connection;
     try {
         const { postId } = req.params;
         const { package_id, include_exclude_id } = req.body;
 
+        // Check if required fields are provided
+        if (!package_id || !include_exclude_id) {
+            return res.status(400).json({ msg: 'Missing required fields: package_id and include_exclude_id are required.' });
+        }
+
+        connection = await client.getConnection();
         const query = 'UPDATE IncludeExcludePackage SET package_id = ?, include_exclude_id = ? WHERE id = ?';
         const values = [package_id, include_exclude_id, postId];
 
-        mysql.query(query, values, (error, result) => {
-            if (error) {
-                console.error(error);
-                return res.status(500).json({ msg: 'Server Error.', error: error.message });
-            }
+        const [result] = await connection.query(query, values);
 
-            if (result.affectedRows === 0) {
-                return res.status(404).json({ msg: 'Include/Exclude Package not found.' });
-            }
+        if (result.affectedRows === 0) {
+            return res.status(404).json({ msg: 'Include/Exclude Package not found.' });
+        }
 
-            res.status(200).json({ msg: 'Include/Exclude Package updated successfully.' });
-        });
+        res.status(200).json({ msg: 'Include/Exclude Package updated successfully.', resp: { id: postId, package_id, include_exclude_id } });
     } catch (error) {
-        console.error(error);
+        console.error("Error in updateIncludeExcludePackage:", error);
         res.status(500).json({ msg: 'Server Error.', error: error.message });
+    } finally {
+        if (connection) {
+            connection.release();
+        }
     }
-}
+};
 
 // Delete Include/Exclude Package by ID
 exports.deleteIncludeExcludePackage = async (req, res) => {
+    let connection;
     try {
         const { postId } = req.params;
+        connection = await client.getConnection();
         const query = 'DELETE FROM IncludeExcludePackage WHERE id = ?';
         const values = [postId];
 
-        mysql.query(query, values, (error, result) => {
-            if (error) {
-                console.error(error);
-                return res.status(500).json({ msg: 'Server Error.', error: error.message });
-            }
+        const [result] = await connection.query(query, values);
 
-            if (result.affectedRows === 0) {
-                return res.status(404).json({ msg: 'Include/Exclude Package not found.' });
-            }
+        if (result.affectedRows === 0) {
+            return res.status(404).json({ msg: 'Include/Exclude Package not found.' });
+        }
 
-            res.status(200).json({ msg: 'Include/Exclude Package deleted successfully.' });
-        });
+        res.status(200).json({ msg: 'Include/Exclude Package deleted successfully.' });
     } catch (error) {
-        console.error(error);
+        console.error("Error in deleteIncludeExcludePackage:", error);
         res.status(500).json({ msg: 'Server Error.', error: error.message });
+    } finally {
+        if (connection) {
+            connection.release();
+        }
     }
 };
